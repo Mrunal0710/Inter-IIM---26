@@ -15,8 +15,8 @@ data.js                          ALL CONTENT: teams, places, autos, fares, buses
 fixtures.js                      bundled fixtures (fallback if the live sheet can't be read)
 assets/                          IIM logos, Inter-IIM emblem, Sports Committee crest (source images)
 assets.js                        the same logos embedded in code, so they always display
-google-my-maps-import.csv/.kml   starter pins you can import into My Maps
-api/mymap.js                     Vercel function that reads the Google My Map
+mymap-data.js                    snapshot of the IIMK Google My Map + its icons
+api/                             Vercel functions: mymap (Google map), schedule (fixtures sheet), weather. Each is cached so 1000+ users never overload Google or the weather service
 tools/export-mymaps.js           regenerates the import file from data.js
 ```
 
@@ -41,24 +41,16 @@ From then on, every commit to GitHub redeploys automatically in about 30 seconds
 
 ---
 
-## 3. Google map (satellite + legend, edited in Google)
+## 3. Google map (your My Map on satellite, with its legend)
 
-The Map tab reads the **IIMK Google My Map** (`config.googleMyMapsId`) live. It draws every layer, pin, path and building outline on a **satellite base**, with a **legend**: tick or untick layers, show all or hide all, and see a count per layer. The legend uses your My Maps layer names and colours. Pin labels appear when you zoom in close.
+The Map tab draws the **IIMK Google My Map** with its own layers, icons and descriptions on a satellite base, plus a legend. You can switch each layer on or off.
 
-**To change the map, just edit it in Google My Maps.** The site picks up changes within about a minute, with no redeploy.
-- **New layer** (e.g. "Washrooms") → it shows up in the legend automatically.
-- **Pin colour** in My Maps = pin colour on the site. Icons are picked from the layer and place name (sports, food, bus, hostel, medical…).
-- **Photos** added to a pin in My Maps show in its popup.
-- **Lines** (bus routes, walking paths) and **shapes** (building outlines) are drawn too.
-- **Pin names:** name venues like the schedule's Venues tab (e.g. "Phase V Sports Complex") so the popups can show which sports are played there.
-
-**Must-do:** in My Maps, click **Share → "Anyone with the link can view"**, or the site can't read the map and falls back to the approximate built-in pins.
-
-**Google view button:** shows Google's own embedded map. To make that one satellite too, set **Base map → Satellite** in the My Maps editor (the small arrow under the layers).
-
-How it works: `api/mymap.js` is a tiny Vercel function that fetches the map's KML, because browsers can't read My Maps directly. It's deployed automatically with the site. Offline, the site shows the last copy it loaded.
-
-**Tip:** `google-my-maps-import.csv` now includes the signage-plan places (H Mess, the five common rooms, the Phase 5 classrooms, the Volleyball & Basketball courts). Import it as a new layer in your My Map, then drag the pins into place.
+- **Snapshot:** `mymap-data.js` holds a copy of the map, exported 12 Nov. It shows instantly and works offline.
+- **Live:** `api/mymap.js` then fetches the live map from Google and swaps it in. Edits you make in My Maps appear within about a minute.
+- **Which one am I seeing?** The line above the map says "🟢 Live from the IIMK Google map" when the live version loaded. If it says "copy from 12 Nov", the live fetch failed: check that the map is shared as **"Anyone with the link can view"**.
+- **Refreshing the snapshot (optional):** in My Maps, ⋮ → Export to KMZ → Download, then run `python3 tools/kmz-to-js.py <file>.kmz` and upload the new `mymap-data.js`.
+- **Linking sports to pins:** venue links (e.g. Football → "Football Ground") use the `mapName` field in `data.js`. If you rename a pin in My Maps, update its `mapName` too.
+- **Pin icons:** pins use the icons exported in the snapshot. A brand-new icon type added later shows as a coloured pin until the snapshot is refreshed.
 
 ## 4. Live fixtures from the schedule sheet
 

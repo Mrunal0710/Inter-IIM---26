@@ -127,7 +127,8 @@
     try {
       if (!wxCache) {
         const [lat, lng] = C.mapCenter;
-        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m&hourly=precipitation_probability&forecast_days=2&timezone=Asia%2FKolkata`);
+        let r = await fetch("/api/weather").catch(() => null);   // cached proxy (Vercel); direct as fallback
+        if (!r || !r.ok) r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m&hourly=precipitation_probability&forecast_days=2&timezone=Asia%2FKolkata`);
         if (!r.ok) throw new Error("wx");
         const j = await r.json(), h = new Date().getHours(), p = (j.hourly?.precipitation_probability || []).slice(h, h + 6);
         wxCache = { ...j.current, rain6: p.length ? Math.max(...p) : null };
@@ -278,35 +279,24 @@
   }
 
   /* =================================================================== MAP
-     Satellite base (Esri) + your Google My Map's layers, pins, paths and shapes,
-     read live via /api/mymap (a Vercel function that fetches the map's KML).
-     Falls back to the places in data.js if the Google map can't be loaded. */
-  let map, mapInit = false, meMarker, baseSat, baseStreet, labels, onSat = true, gView = false;
-  let LAYERS = [], FEATS = [], visible = new Set(), groups = {}, fmarkers = {}, mapSource = "data";
-  const GID = C.googleMyMapsId;
-  const LAYER_EMOJI = [[/sport|ground|court|venue|complex|game|play/i, "🏟️"], [/food|mess|kiosk|canteen|eat|cafe|café/i, "🍛"],
-    [/bus|transport|stop|auto|taxi|gate|parking|travel/i, "🚌"], [/hostel|stay|accommod|room|block|residence/i, "🛏️"],
-    [/medical|health|hospital|first ?aid|clinic/i, "🩺"], [/class|academic|audi|library|admin|office/i, "🏛️"], [/beach|city|outing|around|explore/i, "🌴"]];
-  const emojiFor = (name, layerName) => {
-    for (const [k, e] of Object.entries(S.sportEmoji)) if (new RegExp(k, "i").test(name)) return e;
-    for (const [re, e] of LAYER_EMOJI) if (re.test(name)) return e;
-    for (const [re, e] of LAYER_EMOJI) if (re.test(layerName)) return e;
-    return "📍";
-  };
-  const norm = s => String(s || "").toLowerCase().split(/[·(,]/)[0].replace(/[^a-z0-9]/g, "");
-  function placeForName(name) { const n = norm(name); if (!n) return null;
-    return S.places.find(p => { const k = norm(p.name); return k && (n.includes(k) || k.includes(n)); }) || null; }
+     Shows the IIMK Google My Map (layers, Google's icons, legend) on a satellite base.
+     1) Draws the bundled snapshot (mymap-data.js) instantly, so it works offline.
+     2) Then loads the live map via /api/mymap and redraws if it changed. */
+  let map, mapInit = false, meMarker, baseSat, baseStreet, labels, onSat = true, gView = false, firstFit = true;
+  let LAYERS = [], FEATS = [], visible = null, groups = {}, fmarkers = {}, mapSource = "", kmlNow = "";
+  const GID = C.googleMyMapsId, SNAP = window.MYMAP || null;
+  const nameKey = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const cleanLayer = s => String(s || "Places").replace(/^\s*\d+\.\s*/, "").replace(/\s*\((move these|draft|todo)[^)]*\)/i, "").trim();
   const sportsAt = id => [...new Set(Object.entries(S.venues).filter(([, v]) => v === id).map(([k]) => k))];
-  const sportsForFeat = f => { const p = placeForName(f.name); return p ? sportsAt(p.id) : []; };
-
-  async function loadKML() {
-    if (!GID) return null;
-    try {
-      const r = await fetch(`/api/mymap?mid=${encodeURIComponent(GID)}`, { cache: "no-store" });
-      const t = await r.text(); if (!r.ok || !t.includes("<kml")) throw new Error(t.slice(0, 80));
-      store.set("kml", t); mapSource = "live"; return t;
-    } catch (e) { console.info("My Map not loaded:", e.message); const c = store.get("kml"); if (c) mapSource = "saved"; return c; }
+  function placeForFeat(f) {
+    const k = nameKey(f.name);
+    return S.places.find(p => p.mapName && nameKey(p.mapName) === k) || null;
   }
+  const sportsForFeat = f => { const p = placeForFeat(f); return p ? sportsAt(p.id) : []; };
+  const FALLBACK_EMOJI = [[/sport|ground|court|venue|complex/i, "🏟️"], [/food|mess|cafe|restaurant/i, "🍛"], [/bus|transport|gate|parking|auto/i, "🚌"],
+    [/hostel|stay|room/i, "🛏️"], [/health|medical|hospital/i, "🩺"], [/washroom|toilet|utility/i, "🚻"]];
+  const emojiFor = (a, b) => { for (const [re, e] of FALLBACK_EMOJI) if (re.test(a) || re.test(b)) return e; return "📍"; };
+
   function parseKML(text) {
     const doc = new DOMParser().parseFromString(text, "application/xml");
     if (doc.querySelector("parsererror")) return null;
@@ -317,79 +307,105 @@
     const hex = c => c && c.trim().length === 8 ? "#" + c.trim().slice(6, 8) + c.trim().slice(4, 6) + c.trim().slice(2, 4) : null;
     const alpha = c => c && c.trim().length === 8 ? parseInt(c.trim().slice(0, 2), 16) / 255 : null;
     const styleOf = url => {
-      let id = (url || "").trim().replace("#", ""); if (smap[id]) id = smap[id];
-      const s = styles[id], txt = q => s?.querySelector(q)?.textContent, m = (url || "").match(/-([0-9A-Fa-f]{6})(?:-|$)/);
+      let id = (url || "").trim().replace("#", ""); const raw = id; if (smap[id]) id = smap[id];
+      const base = id.replace(/-(nodesc|normal|highlight)/g, ""), s = styles[id], txt = q => s?.querySelector(q)?.textContent;
+      const m = base.match(/-([0-9A-Fa-f]{6})$/), icon = SNAP?.icons?.[base] || null;
       const ic = hex(txt("IconStyle color")), lc = txt("LineStyle color"), pc = txt("PolyStyle color");
       const color = (m ? "#" + m[1] : null) || ic || hex(lc) || "#ecb310";
-      return { color, line: hex(lc) || color, lineW: Math.max(2, +(txt("LineStyle width") || 3)), fill: hex(pc) || color, fillO: alpha(pc) ?? .3 };
+      return { key: base || raw, icon, color, line: hex(lc) || color, lineW: Math.max(2, +(txt("LineStyle width") || 3)), fill: hex(pc) || color, fillO: alpha(pc) ?? .3 };
     };
     const coords = s => String(s || "").trim().split(/\s+/).map(c => { const [x, y] = c.split(",").map(Number); return [y, x]; }).filter(([a, b]) => isFinite(a) && isFinite(b));
-    const descText = html => { if (!html) return ""; const d = new DOMParser().parseFromString(String(html).replace(/<br\s*\/?>/gi, "\n"), "text/html"); return (d.body.textContent || "").trim(); };
+    function parseDesc(html) {
+      if (!html) return { text: "", walk: null };
+      const d = new DOMParser().parseFromString(String(html).replace(/<br\s*\/?>/gi, "\n"), "text/html");
+      let walk = null;
+      d.querySelectorAll("a[href]").forEach(a => { if (/maps\/dir/.test(a.href)) { walk = walk || a.href; a.remove(); } });
+      let text = (d.body.textContent || "");
+      text = text.replace(/Walking directions\s*\((https:\/\/www\.google\.com\/maps\/dir\/[^)\s]+)\)/gi, (_, u) => { walk = walk || u; return ""; })
+                 .replace(/Walking directions\s*$/gim, "").replace(/\n{3,}/g, "\n\n").trim();
+      return { text, walk };
+    }
     let folders = [...doc.querySelectorAll("Folder")].filter(f => f.querySelector("Placemark"));
     if (!folders.length) folders = [doc.querySelector("Document") || doc.documentElement];
     const layers = [], feats = [];
     folders.forEach((f, i) => {
-      const lname = f.querySelector(":scope > name")?.textContent.trim() || "Places", lid = "L" + i, colors = {};
+      const rawName = f.querySelector(":scope > name")?.textContent.trim() || "Places", lid = "L" + i, icons = {}, colors = {};
       [...f.querySelectorAll(":scope > Placemark")].forEach((p, j) => {
-        const name = p.querySelector(":scope > name")?.textContent.trim() || "Untitled";
+        const name = (p.querySelector(":scope > name")?.textContent || "Untitled").replace(/\s+/g, " ").trim();
         const st = styleOf(p.querySelector(":scope > styleUrl")?.textContent);
+        const { text, walk } = parseDesc(p.querySelector(":scope > description")?.textContent);
         const media = (p.querySelector('Data[name="gx_media_links"] value')?.textContent || "").trim().split(/\s+/).filter(u => /^https:\/\//.test(u));
-        const base = { id: `${lid}-${j}`, layer: lid, layerName: lname, name, desc: descText(p.querySelector(":scope > description")?.textContent), media, style: st };
+        const base = { id: `${lid}-${j}`, layer: lid, layerName: cleanLayer(rawName), name, desc: text, walk, media, style: st };
         const pt = p.querySelector("Point coordinates"), ls = p.querySelectorAll("LineString coordinates"), pg = p.querySelectorAll("Polygon outerBoundaryIs coordinates");
-        if (pt) { const [ll] = coords(pt.textContent); if (ll) feats.push({ ...base, kind: "point", center: ll }); }
+        if (pt) { const [ll] = coords(pt.textContent); if (!ll) return; feats.push({ ...base, kind: "point", center: ll }); }
         else if (pg.length) { const rings = [...pg].map(c => coords(c.textContent)); feats.push({ ...base, kind: "poly", rings, center: L.polygon(rings).getBounds().getCenter() }); }
         else if (ls.length) { const lines = [...ls].map(c => coords(c.textContent)); feats.push({ ...base, kind: "line", lines, center: lines[0][Math.floor(lines[0].length / 2)] }); }
         else return;
-        colors[st.color] = (colors[st.color] || 0) + 1;
+        if (st.icon) icons[st.key] = st.icon; colors[st.color] = (colors[st.color] || 0) + 1;
       });
       const count = feats.filter(x => x.layer === lid).length;
-      if (count) layers.push({ id: lid, name: lname, count, color: Object.entries(colors).sort((a, b) => b[1] - a[1])[0]?.[0] || "#ecb310" });
+      if (count) layers.push({ id: lid, raw: rawName, name: cleanLayer(rawName), count, icons: Object.values(icons).slice(0, 5),
+        color: Object.entries(colors).sort((a, b) => b[1] - a[1])[0]?.[0] || "#ecb310" });
     });
     return layers.length ? { layers, feats } : null;
   }
-  function fromDataPlaces() {
-    const layers = S.categories.map((c, i) => ({ id: c.id, name: c.label, color: c.color, emoji: c.emoji, count: S.places.filter(p => p.cat === c.id).length })).filter(l => l.count);
-    const feats = S.places.map(p => ({ id: p.id, layer: p.cat, layerName: catById(p.cat).label, name: p.name, desc: p.desc || "", media: [], kind: "point",
-      center: [p.lat, p.lng], style: { color: catById(p.cat).color }, approx: p.verified === false, gmaps: p.gmaps }));
-    return { layers, feats };
-  }
 
-  const featEmoji = f => LAYERS.find(l => l.id === f.layer)?.emoji || emojiFor(f.name, f.layerName);
-  function pinIcon(f) {
-    return L.divIcon({ className: "", iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -30],
-      html: `<div class="pin" style="background:${f.style.color}"><span>${featEmoji(f)}</span></div><div class="pin-label">${esc(f.name)}</div>` });
+  function featIcon(f) {
+    const ic = f.style.icon;
+    const label = `<div class="pin-label">${esc(f.name)}</div>`;
+    if (ic) {
+      const sz = ic.pin ? [30, 30] : [26, 26], anchor = ic.pin ? [15, 30] : [13, 13];
+      return L.divIcon({ className: "", iconSize: sz, iconAnchor: anchor, popupAnchor: [0, ic.pin ? -26 : -12],
+        html: `<img class="gicon" src="${ic.src}" width="${sz[0]}" height="${sz[1]}" alt="">${label}` });
+    }
+    return L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -26],
+      html: `<div class="pin" style="background:${f.style.color};width:28px;height:28px"><span style="font-size:14px">${emojiFor(f.name, f.layerName)}</span></div>${label}` });
   }
-  const featDirections = f => f.gmaps ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(f.gmaps)}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${f.center[0]},${f.center[1]}`;
+  const featDirections = f => {
+    const p = placeForFeat(f);
+    if (p?.gmaps) return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.gmaps)}`;
+    return f.walk || `https://www.google.com/maps/dir/?api=1&destination=${f.center[0]},${f.center[1]}&travelmode=walking`;
+  };
+  const linkify = t => esc(t).replace(/(\+91[\d\s]{10,14}\d)/g, m => `<a href="tel:${m.replace(/\s/g, "")}">${m}</a>`).replace(/\n/g, "<br>");
   function popupHTML(f) {
-    const sp = sportsForFeat(f), layer = LAYERS.find(l => l.id === f.layer);
-    return `<div class="pop"><div class="cat" style="color:${f.style.color}">${featEmoji(f)} ${esc(layer?.name || "")}</div><h4>${esc(f.name)}</h4>
+    const sp = sportsForFeat(f), layer = LAYERS.find(l => l.id === f.layer), ic = f.style.icon;
+    return `<div class="pop"><div class="cat">${ic ? `<img src="${ic.src}" width="16" height="16" alt="">` : ""} ${esc(layer?.name || "")}</div><h4>${esc(f.name)}</h4>
       ${f.media[0] ? `<img class="pop-img" src="${esc(f.media[0])}" alt="" loading="lazy">` : ""}
       ${sp.length ? `<div class="row" style="gap:4px;margin-top:4px">${sp.map(s => `<span class="tag">${S.sportEmoji[s] || ""} ${esc(s)}</span>`).join("")}</div>` : ""}
-      ${f.desc ? `<p>${esc(f.desc).replace(/\n/g, "<br>")}</p>` : ""}${f.approx ? `<span class="approx">Approximate pin location</span>` : ""}
+      ${f.desc ? `<p>${linkify(f.desc)}</p>` : ""}
       <div class="row"><a class="btn sm" href="${featDirections(f)}" target="_blank" rel="noopener">Directions ↗</a>
       ${sp.length ? `<a class="btn sm accent" href="#sports">Fixtures</a>` : ""}</div></div>`;
   }
 
-  async function initMap() {
+  function fromDataPlaces() {   // last-resort fallback if no Google map data at all
+    const layers = S.categories.map(c => ({ id: c.id, name: c.label, color: c.color, icons: [], count: S.places.filter(p => p.cat === c.id).length })).filter(l => l.count);
+    const feats = S.places.map(p => ({ id: p.id, layer: p.cat, layerName: catById(p.cat).label, name: p.mapName || p.name, desc: p.desc || "", media: [], kind: "point",
+      center: [p.lat, p.lng], style: { color: catById(p.cat).color, icon: null } }));
+    return { layers, feats };
+  }
+
+  function initMap() {
     if (mapInit) return; mapInit = true;
-    if (!window.L) { $("#leaflet").innerHTML = `<div class="empty-note" style="margin:12px">The map needs an internet connection.</div>`; return; }
-    map = L.map("leaflet", { zoomControl: false, maxZoom: 20 }).setView(C.mapCenter, C.mapZoom);
+    if (!window.L) { $("#leaflet").innerHTML = `<div class="empty-note" style="margin:12px">The map needs an internet connection. The list below still works.</div>`; return; }
+    map = L.map("leaflet", { zoomControl: false, maxZoom: 20 }).setView(C.mapCenter, 16);
     L.control.zoom({ position: "bottomright" }).addTo(map);
     baseSat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      { maxZoom: 20, maxNativeZoom: 18, attribution: "Imagery &copy; Esri, Maxar" });
-    labels = L.layerGroup([
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 18, opacity: .7 }),
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 18 })]);
+      { maxZoom: 20, maxNativeZoom: 18, attribution: "Imagery &copy; Esri, Maxar · Places &copy; IIMK Google My Map" });
+    labels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 18, opacity: .6 });
     baseStreet = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
       { maxZoom: 20, subdomains: "abcd", attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO' });
     baseSat.addTo(map); labels.addTo(map);
-    map.on("zoomend", () => $("#leaflet").classList.toggle("show-labels", map.getZoom() >= 17));
-    $("#leaflet").classList.toggle("show-labels", map.getZoom() >= 17);
-    if (PICK) map.on("click", e => { const t = `lat: ${e.latlng.lat.toFixed(5)}, lng: ${e.latlng.lng.toFixed(5)}`; copy(t);
+    const placeLegend = () => { const lg = $("#legend"), below = window.innerWidth < 700;
+      lg.classList.toggle("below", below);
+      if (below && lg.parentElement.classList.contains("map-wrap")) $(".map-wrap").after(lg);
+      if (!below && !lg.parentElement.classList.contains("map-wrap")) $(".map-wrap").appendChild(lg); };
+    placeLegend(); window.addEventListener("resize", placeLegend);
+    const lbl = () => $("#leaflet").classList.toggle("show-labels", map.getZoom() >= 18);
+    map.on("zoomend", lbl); lbl();
+    if (PICK) map.on("click", e => { const t = `lat: ${e.latlng.lat.toFixed(6)}, lng: ${e.latlng.lng.toFixed(6)}`; copy(t);
       L.popup().setLatLng(e.latlng).setContent(`<div class="pop"><code>${t}</code><p class="small">Copied</p></div>`).openOn(map); });
 
-    $("#btnCampus").onclick = () => map.flyTo(C.mapCenter, C.mapZoom);
+    $("#btnCampus").onclick = fitCampus;
     $("#btnFit").onclick = fitVisible;
     $("#btnBase").onclick = () => { onSat = !onSat;
       if (onSat) { map.removeLayer(baseStreet); baseSat.addTo(map); labels.addTo(map); } else { map.removeLayer(baseSat); map.removeLayer(labels); baseStreet.addTo(map); }
@@ -397,7 +413,7 @@
     $("#btnView").hidden = !GID;
     $("#btnView").onclick = () => { gView = !gView;
       if (gView && !$("#gframe iframe")) $("#gframe").innerHTML = `<iframe src="https://www.google.com/maps/d/embed?mid=${encodeURIComponent(GID)}&ehbc=2E312F" allowfullscreen loading="lazy" title="Google My Maps"></iframe>`;
-      $("#gframe").hidden = !gView; $("#btnView").textContent = gView ? "← Back to map" : "Google view"; $("#legend").hidden = gView; };
+      $("#gframe").hidden = !gView; $("#btnView").textContent = gView ? "← Back" : "Google view"; $("#legend").hidden = gView; };
     $("#btnLocate").onclick = () => {
       if (!navigator.geolocation) return toast("Location isn't available on this device");
       toast("Finding you…");
@@ -408,34 +424,53 @@
       }, () => toast("Couldn't get your location"), { enableHighAccuracy: true, timeout: 10000 });
     };
 
-    $("#mapHint").textContent = "Loading map…";
-    const kml = await loadKML(), parsed = kml ? parseKML(kml) : null;
-    const data = parsed || fromDataPlaces(); if (!parsed) mapSource = "data";
-    LAYERS = data.layers; FEATS = data.feats;
-    LAYERS.forEach(l => { visible.add(l.id); l.emoji = l.emoji || emojiFor("", l.name); });
-    drawFeatures(); renderLegend(); renderChips(); filterPlaces();
-    map.on("popupopen", () => { if (window.innerWidth < 700) $("#legend").classList.add("dim"); });
-    map.on("popupclose", () => $("#legend").classList.remove("dim"));
-    $("#mapHint").innerHTML = mapSource === "live" ? `🟢 Live from the IIMK Google map · ${FEATS.length} places${GID ? ` · <a href="https://www.google.com/maps/d/viewer?mid=${encodeURIComponent(GID)}" target="_blank" rel="noopener">Open in Google Maps ↗</a>` : ""}`
-      : mapSource === "saved" ? `Showing the last saved copy of the Google map (offline).`
-      : `Built-in pins (approximate). Tap "Go" for directions.`;
-    if (pendingFocus) { focusPlace(pendingFocus); pendingFocus = null; }
+    // 1) instant: last live copy saved on this phone, else the bundled snapshot
+    const saved = store.get("kml");
+    if (saved && drawKML(saved, "saved")) { /* drawn */ }
+    else if (SNAP?.kml && drawKML(SNAP.kml, "snapshot")) { /* drawn */ }
+    else { const d = fromDataPlaces(); setData(d, "data"); }
+    // 2) live from Google (via the cached Vercel function)
+    if (GID) fetch(`/api/mymap?mid=${encodeURIComponent(GID)}`).then(r => r.ok ? r.text() : Promise.reject(r.status)).then(t => {
+      if (!t.includes("<kml")) throw new Error("not kml");
+      store.set("kml", t);
+      if (t !== kmlNow) drawKML(t, "live"); else { mapSource = "live"; setHint(); }
+    }).catch(e => console.info("Live Google map not available, showing", mapSource, e));
   }
-  function drawFeatures() {
-    LAYERS.forEach(l => { groups[l.id] = L.featureGroup().addTo(map); });
+  function drawKML(text, source) {
+    const parsed = parseKML(text); if (!parsed) return false;
+    kmlNow = text; setData(parsed, source); return true;
+  }
+  function setData(data, source) {
+    Object.values(groups).forEach(g => map.removeLayer(g)); groups = {}; fmarkers = {};
+    const prevHidden = visible ? LAYERS.filter(l => !visible.has(l.id)).map(l => l.name) : (C.mapStartLayersHidden || []).map(cleanLayer);
+    LAYERS = data.layers; FEATS = data.feats; mapSource = source;
+    visible = new Set(LAYERS.filter(l => !prevHidden.includes(l.name)).map(l => l.id));
+    LAYERS.forEach(l => { groups[l.id] = L.featureGroup(); if (visible.has(l.id)) groups[l.id].addTo(map); });
     FEATS.forEach(f => {
       let lyr;
-      if (f.kind === "point") lyr = L.marker(f.center, { icon: pinIcon(f), title: f.name, riseOnHover: true });
+      if (f.kind === "point") lyr = L.marker(f.center, { icon: featIcon(f), title: f.name, riseOnHover: true });
       else if (f.kind === "poly") lyr = L.polygon(f.rings, { color: f.style.line, weight: 2, fillColor: f.style.fill, fillOpacity: Math.max(.15, Math.min(.5, f.style.fillO)) });
       else lyr = L.polyline(f.lines, { color: f.style.line, weight: Math.min(6, f.style.lineW), opacity: .9 });
       lyr.bindPopup(() => popupHTML(f), { autoPanPaddingTopLeft: [12, 64], maxWidth: 280 });
       if (f.kind !== "point") lyr.bindTooltip(esc(f.name), { sticky: true, className: "shape-tip" });
       lyr.addTo(groups[f.layer]); fmarkers[f.id] = lyr;
     });
+    renderLegend(); renderChips(); filterPlaces(); setHint();
+    if (firstFit) { firstFit = false; setTimeout(() => { map.invalidateSize(); if (pendingFocus) { focusPlace(pendingFocus); pendingFocus = null; } else fitCampus(); }, 120); }
+  }
+  function setHint() {
+    const open = GID ? ` · <a href="https://www.google.com/maps/d/viewer?mid=${encodeURIComponent(GID)}" target="_blank" rel="noopener">Open in Google Maps ↗</a>` : "";
+    $("#mapHint").innerHTML = (mapSource === "live" ? `🟢 Live from the IIMK Google map · ${FEATS.length} places`
+      : mapSource === "snapshot" ? `IIMK Google map · ${FEATS.length} places (copy from ${esc(SNAP?.asOf || "")})`
+      : mapSource === "saved" ? `IIMK Google map · ${FEATS.length} places (saved copy)` : `Built-in pins`) + open;
+  }
+  function fitCampus() {   // everything within ~1.5 km of campus
+    const near = FEATS.filter(f => visible.has(f.layer) && map.distance(f.center, C.mapCenter) < 1500);
+    if (near.length) map.fitBounds(L.latLngBounds(near.map(f => f.center)).pad(0.06), { maxZoom: 18 }); else map.setView(C.mapCenter, 16);
   }
   function fitVisible() {
     const b = L.latLngBounds([]); LAYERS.forEach(l => { if (visible.has(l.id) && groups[l.id].getLayers().length) b.extend(groups[l.id].getBounds()); });
-    if (b.isValid()) map.flyToBounds(b.pad(0.08), { maxZoom: 18 });
+    if (b.isValid()) map.flyToBounds(b.pad(0.06), { maxZoom: 18 });
   }
   function setVisible(ids) {
     visible = new Set(ids);
@@ -444,10 +479,11 @@
   }
   function renderLegend() {
     const lg = $("#legend"); if (!lg) return;
-    const pref = store.get("legendOpen"), open = pref ? pref === "1" : window.innerWidth >= 700;
-    lg.innerHTML = `<button class="lg-head" type="button" aria-expanded="${open}">🗂 Legend <span>${open ? "▾" : "▸"}</span></button>
+    const pref = store.get("legendOpen"), open = pref ? pref === "1" : true;
+    const sw = l => l.icons.length ? `<span class="sw-icons">${l.icons.map(i => `<img src="${i.src}" alt="">`).join("")}</span>` : `<span class="sw" style="background:${l.color}"></span>`;
+    lg.innerHTML = `<button class="lg-head" type="button" aria-expanded="${open}">🗂 Legend <span>${open ? "▾ hide" : "▸ show"}</span></button>
       ${open ? `<div class="lg-body">${LAYERS.map(l => `<label class="lg-row"><input type="checkbox" data-l="${l.id}" ${visible.has(l.id) ? "checked" : ""}>
-        <span class="sw" style="background:${l.color}">${l.emoji}</span><span class="nm">${esc(l.name)}</span><small>${l.count}</small></label>`).join("")}
+        <span class="nm">${esc(l.name)}</span><small>${l.count}</small>${sw(l)}</label>`).join("")}
         <div class="lg-acts"><button type="button" data-all="1">Show all</button><button type="button" data-all="0">Hide all</button></div></div>` : ""}`;
     $(".lg-head", lg).onclick = () => { store.set("legendOpen", open ? "0" : "1"); renderLegend(); };
     $$("input[data-l]", lg).forEach(cb => cb.onchange = () => { const s = new Set(visible); cb.checked ? s.add(cb.dataset.l) : s.delete(cb.dataset.l); setVisible([...s]); });
@@ -456,7 +492,7 @@
   function renderChips() {
     const allOn = visible.size === LAYERS.length;
     $("#mapChips").innerHTML = `<button class="chip ${allOn ? "on" : ""}" data-c="all">✳️ All</button>` +
-      LAYERS.map(l => `<button class="chip ${!allOn && visible.size === 1 && visible.has(l.id) ? "on" : ""}" data-c="${l.id}"><span class="dotc" style="background:${l.color}"></span>${esc(l.name)}</button>`).join("");
+      LAYERS.map(l => `<button class="chip ${!allOn && visible.size === 1 && visible.has(l.id) ? "on" : ""}" data-c="${l.id}">${l.icons[0] ? `<img class="chip-ic" src="${l.icons[0].src}" alt="">` : `<span class="dotc" style="background:${l.color}"></span>`}${esc(l.name)}</button>`).join("");
     $$("#mapChips .chip").forEach(b => b.onclick = () => setVisible(b.dataset.c === "all" ? LAYERS.map(l => l.id) : [b.dataset.c]));
   }
   const hay = f => [f.name, f.desc, f.layerName, ...sportsForFeat(f)].join(" ").toLowerCase();
@@ -464,31 +500,33 @@
     const q = ($("#mapSearch").value || "").trim().toLowerCase();
     const shown = FEATS.filter(f => visible.has(f.layer) && (!q || hay(f).includes(q)));
     $("#placeList").innerHTML = shown.length ? LAYERS.filter(l => shown.some(f => f.layer === l.id)).map(l =>
-      `<li class="grp"><span class="dotc" style="background:${l.color}"></span>${esc(l.name)}</li>` +
-      shown.filter(f => f.layer === l.id).map(f => { const sp = sportsForFeat(f);
-        return `<li data-id="${esc(f.id)}"><div class="dot" style="background:${f.style.color}26">${featEmoji(f)}</div><div class="pl-b">
+      `<li class="grp">${l.icons[0] ? `<img class="chip-ic" src="${l.icons[0].src}" alt="">` : `<span class="dotc" style="background:${l.color}"></span>`}${esc(l.name)}</li>` +
+      shown.filter(f => f.layer === l.id).map(f => { const sp = sportsForFeat(f), ic = f.style.icon;
+        return `<li data-id="${esc(f.id)}"><div class="dot">${ic ? `<img src="${ic.src}" alt="" width="26" height="26">` : emojiFor(f.name, f.layerName)}</div><div class="pl-b">
           <h4>${esc(f.name)}</h4><p>${sp.length ? esc(sp.join(" · ")) : esc((f.desc || l.name).split("\n")[0])}</p></div>
           <a class="btn sm ghost" href="${featDirections(f)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Go ↗</a></li>`; }).join("")).join("")
       : `<li class="empty">Nothing matches${visible.size < LAYERS.length ? " in the layers that are switched on" : ""}.</li>`;
     $$("#placeList li[data-id]").forEach(li => li.onclick = () => openFeat(li.dataset.id, true));
-    if (q && shown.length && map && shown.length <= 15) { const b = L.latLngBounds(shown.map(f => f.center)); map.flyToBounds(b.pad(0.3), { maxZoom: 18 }); }
+    if (q && shown.length && map && shown.length <= 15) map.flyToBounds(L.latLngBounds(shown.map(f => f.center)).pad(0.3), { maxZoom: 19 });
   }
   function openFeat(id, scroll) {
     const f = FEATS.find(x => x.id === id); if (!f || !map) return;
     if (gView) $("#btnView").click();
     if (!visible.has(f.layer)) setVisible([...visible, f.layer]);
-    map.flyTo(f.center, Math.max(map.getZoom(), f.layerName.match(/city|around|beach|outing/i) ? 14 : 18), { duration: .6 });
+    map.flyTo(f.center, map.distance(f.center, C.mapCenter) > 3000 ? 15 : 19, { duration: .6 });
     setTimeout(() => fmarkers[id]?.openPopup(f.kind === "point" ? undefined : f.center), 650);
     if (scroll) $(".map-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
   }
   let pendingFocus = null;
-  function focusPlace(id) {   // id = a place id from data.js (used by links like #map/phase5)
-    if (!FEATS.length) { pendingFocus = id; return; }
+  function focusPlace(id) {   // id = a place id from data.js (links like #map/football)
+    if (!FEATS.length || firstFit) { pendingFocus = id; return; }
+    firstFit = false;
     const p = placeById(id); if (!p) return;
-    const f = FEATS.find(x => x.id === id) || FEATS.find(x => { const a = norm(x.name), b = norm(p.name); return a && b && (a.includes(b) || b.includes(a)); });
+    const f = FEATS.find(x => x.id === id) || (p.mapName && FEATS.find(x => nameKey(x.name) === nameKey(p.mapName)));
     if (f) return openFeat(f.id);
-    map.flyTo([p.lat, p.lng], 17);
-    L.popup().setLatLng([p.lat, p.lng]).setContent(`<div class="pop"><h4>${esc(p.name)}</h4><p>${esc(p.desc || "")}</p><span class="approx">Not on the Google map yet. Approximate location.</span></div>`).openOn(map);
+    map.flyTo([p.lat, p.lng], map.distance([p.lat, p.lng], C.mapCenter) > 3000 ? 14 : 18);
+    L.popup().setLatLng([p.lat, p.lng]).setContent(`<div class="pop"><h4>${esc(p.name)}</h4><p>${esc(p.desc || "")}</p>
+      <div class="row"><a class="btn sm" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a></div></div>`).openOn(map);
   }
 
   /* =================================================================== TRANSPORT */
@@ -647,8 +685,10 @@
     try {
       const out = [];
       await Promise.all(Object.entries(sh.tabs).map(async ([key, tab]) => {
-        const u = `https://docs.google.com/spreadsheets/d/${sh.id}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tab)}`;
-        const r = await fetch(u, { cache: "no-store" }); if (!r.ok) throw new Error("sheet");
+        // Cached proxy first (one Google request a minute for everyone), direct Google as fallback.
+        let r = await fetch(`/api/schedule?id=${encodeURIComponent(sh.id)}&sheet=${encodeURIComponent(tab)}`).catch(() => null);
+        if (!r || !r.ok) r = await fetch(`https://docs.google.com/spreadsheets/d/${sh.id}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tab)}`, { cache: "no-store" });
+        if (!r.ok) throw new Error("sheet");
         const rows = parseCSV(await r.text()); if (!rows.length) throw new Error("empty");
         const hdr = rows[0].map(timeLabel);
         if (hdr.filter(Boolean).length < 20) throw new Error("layout");

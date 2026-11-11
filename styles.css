@@ -303,7 +303,7 @@ td.r,th.r{text-align:right;white-space:nowrap}
 .lg-head{display:flex;justify-content:space-between;gap:12px;width:100%;border:0;background:transparent;color:#fff;font-weight:850;font-size:.85rem;padding:9px 12px;letter-spacing:.02em}
 .lg-head span{color:var(--accent)}
 .lg-body{max-height:38dvh;overflow:auto;padding:0 8px 8px}
-.lg-row{display:grid;grid-template-columns:auto 26px 1fr auto;align-items:center;gap:8px;padding:6px 4px;border-top:1px solid rgba(255,255,255,.08);font-size:.82rem;font-weight:650;cursor:pointer}
+.lg-row{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:8px;padding:6px 4px;border-top:1px solid rgba(255,255,255,.08);font-size:.82rem;font-weight:650;cursor:pointer}
 .lg-row input{accent-color:var(--accent);width:16px;height:16px;margin:0}
 .lg-row .sw{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:14px;border:2px solid rgba(255,255,255,.85)}
 .lg-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -330,3 +330,23 @@ td.r,th.r{text-align:right;white-space:nowrap}
 .cont-list{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .cont-list button{min-width:0}
 .cont-list button img{flex:0 0 40px}
+
+/* ---------- v6: Google My Maps icons ---------- */
+.gicon{display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+.sw-icons{display:flex;gap:2px}
+.sw-icons img{width:18px;height:18px;object-fit:contain}
+.lg-row .sw{width:14px;height:14px;border-radius:50%;border:2px solid #fff}
+.chip-ic{width:16px;height:16px;object-fit:contain;vertical-align:-3px;margin-right:5px}
+.place-list li .dot{background:transparent}
+.pop .cat{display:flex;align-items:center;gap:5px;color:var(--ink-2)}
+.legend{max-width:min(300px,82%)}
+@media(max-width:699px){.lg-body{max-height:30dvh}.lg-row{padding:5px 2px;font-size:.78rem}}
+.map-wrap{height:60dvh}
+@media(min-width:900px){.map-wrap{height:auto}}
+@media(max-width:899px){.map-shell{display:block;height:auto}.place-list{overflow:visible}}
+.legend.below{position:static;max-width:none;margin:10px 12px 0;border-radius:14px}
+.legend.below .lg-body{max-height:none;display:grid;grid-template-columns:1fr 1fr;column-gap:10px}
+.legend.below .lg-acts{grid-column:1/-1}
+.legend.below .lg-row{grid-template-columns:auto 1fr auto;font-size:.78rem}
+.legend.below .lg-row small{display:none}
+.legend.below .sw-icons img:nth-child(n+3){display:none}

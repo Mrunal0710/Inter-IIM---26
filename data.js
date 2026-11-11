@@ -33,6 +33,7 @@ window.SITE = {
        The sheet must be shared as "Anyone with the link → Viewer".
        If it can't be read, or its layout changes, the site falls back
        to fixtures.js. Set id to "" to turn live sync off. */
+    mapStartLayersHidden: [],          // optional: layer names to start switched off, e.g. ["8. Outside the Gate - Kunnamangalam"]
     scheduleSheet: {
       id: "1M5e54Ff0bAhkAeLbHIN5E2FSLR3fO5UtF8BzWR8HvCI",
       tabs: { D1: "Day 1 - 13th", D2: "Day 2 - 14th", D3: "Day 3 - 15th" }
@@ -51,7 +52,7 @@ window.SITE = {
 
   /* ---------------- ANNOUNCEMENTS ---------------- level: "info" | "alert" */
   announcements: [
-    { level: "alert", text: "Cricket is played at the NIT Calicut cricket ground, off campus (about 7 km). Everything else is on the IIMK campus." },
+    { level: "alert", text: "Two sports are OFF CAMPUS: cricket at the NIT Calicut ground (~7 km) and badminton at the Devagiri Sports Complex (~6–7 km). Everything else is on the IIMK campus." },
     { level: "info",  text: "Free campus buses loop between PGP Auditorium, D Landing, Phase V and the Main Gate from early morning to past midnight. Use the Travel tab to find your next bus." },
     { level: "info",  text: "Fixtures can move. Check Sportagon or the Sports tab before you head out." }
   ],
@@ -86,58 +87,65 @@ window.SITE = {
      or with ?pick (README §3). `also` puts a place under extra categories.
      `gmaps` = text search used for directions (for well-known places). */
   places: [
-    // Sports venues (from the "Venues" tab)
-    { id: "phase5",   cat: "sports", also: ["transport"], name: "Phase V Sports Complex", lat: 11.2972, lng: 75.8762, verified: false,
-      desc: "Squash, swimming, tennis, kabaddi, frisbee, futsal, football and hockey. Also a campus bus stop. Washrooms on all three floors of the Phase 5 building." },
-    { id: "devagiri", cat: "sports", name: "Devagiri Sports Complex", lat: 11.2958, lng: 75.8729, verified: false, desc: "Badminton." },
-    { id: "bball",    cat: "sports", name: "Volleyball & Basketball Courts", lat: 11.2921, lng: 75.8698, verified: false,
-      desc: "Take LEFT at the Main Gate. Volleyball and basketball (men & women)." },
-    { id: "mg-ground",cat: "sports", name: "Main Ground (Kho-Kho & Throwball)", lat: 11.2917, lng: 75.8719, verified: false, desc: "At the Main Gate. Kho-kho and throwball." },
-    { id: "eblock",   cat: "sports", name: "Phase 5 Classrooms (E1–E4)", lat: 11.2967, lng: 75.8769, verified: false,
-      desc: "Use the Phase 5 classroom entrance. E1: Table tennis (men) · E2: Table tennis (women) · E3: Carrom · E4: Chess." },
-    { id: "pq",       cat: "sports", name: "PQ Common Room", lat: 11.2948, lng: 75.8748, verified: false, desc: "Pool (men & women)." },
-    { id: "gym",      cat: "sports", name: "Student Gymnasium", lat: 11.2962, lng: 75.8722, verified: false, desc: "Powerlifting, including weigh-ins." },
-    { id: "nit",      cat: "sports", name: "NIT Calicut Cricket Ground", lat: 11.3216, lng: 75.9336, verified: false, gmaps: "NIT Calicut, Kattangal, Kozhikode",
-      desc: "Cricket. OFF CAMPUS, about 7 km away (₹250 one way / ₹500 return by auto per the Team Namo card)." },
+    // Coordinates come from the IIMK Google My Map. mapName = the exact pin name there, so
+    // links like "#map/football" open that pin. If you rename a pin in My Maps, update mapName.
+    // Sports venues
+    { id: "phase5",   cat: "sports", mapName: "Sports Complex IIMK", name: "Phase V Sports Complex", lat: 11.292292, lng: 75.87604,
+      desc: "Futsal, frisbee, hockey, kabaddi and squash. Football, tennis and swimming are right next to it. Go down the stairs between the PT Usha and Mary Kom hostels." },
+    { id: "football", cat: "sports", mapName: "Football Ground", name: "Football Ground (Phase V)", lat: 11.2918394, lng: 75.8759925, desc: "Football." },
+    { id: "tennis",   cat: "sports", mapName: "Tennis Court", name: "Tennis Court (Phase V)", lat: 11.292406, lng: 75.8758018, desc: "Tennis." },
+    { id: "swimming", cat: "sports", mapName: "Swimming pool", name: "Swimming Pool (Phase V)", lat: 11.2922917, lng: 75.876406, desc: "Swimming." },
+    { id: "devagiri", cat: "sports", mapName: "Badminton, Devagiri Sports Complex", name: "Devagiri Sports Complex", lat: 11.2639971, lng: 75.8353342,
+      gmaps: "Devagiri College Kozhikode", desc: "Badminton. OFF CAMPUS, about 6–7 km away in Kozhikode." },
+    { id: "bball",    cat: "sports", mapName: "Basketball Court", name: "Basketball Court (Main Gate)", lat: 11.300364, lng: 75.873027, desc: "Basketball. Next to the main ground; take LEFT at the Main Gate." },
+    { id: "volley",   cat: "sports", mapName: "Volleyball Court", name: "Volleyball Court (Main Gate)", lat: 11.300569, lng: 75.873075, desc: "Volleyball. Next to the main ground; take LEFT at the Main Gate." },
+    { id: "mg-ground",cat: "sports", mapName: "Kho Kho and Throwball", name: "Main Gate Ground (Kho-Kho & Throwball)", lat: 11.3008104, lng: 75.8735103, desc: "Kho-kho and throwball." },
+    { id: "eblock",   cat: "sports", mapName: "E1, E2, E3, E4 Classroom", name: "E1–E4 Classrooms (Phase V)", lat: 11.2924448, lng: 75.8748743,
+      desc: "Second floor. E1: Table tennis (men) · E2: Table tennis (women) · E3: Carrom · E4: Chess." },
+    { id: "gym",      cat: "sports", mapName: "Gymnasium", name: "Student Gymnasium", lat: 11.2915, lng: 75.873824, desc: "Powerlifting. Second floor, above J Mess." },
+    { id: "pq",       cat: "sports", mapName: "PQ Common Room", name: "PQ Common Room", lat: 11.2919578, lng: 75.8754765, desc: "Pool. Some pool matches may be at the AB Common Room, so check the fixture." },
+    { id: "nit",      cat: "sports", name: "NIT Calicut Cricket Ground", lat: 11.3216, lng: 75.9336, gmaps: "NIT Calicut, Kattangal, Kozhikode",
+      desc: "Cricket. OFF CAMPUS, about 7 km away (₹250 one way / ₹500 return by auto)." },
 
-    // Campus bus stops (from the bus schedule)
-    { id: "main-gate", cat: "transport", name: "Main Gate · Bus Stop & Auto Stand", lat: 11.2913, lng: 75.8704, verified: false,
-      desc: "Campus bus stop. Team Namo autos and taxis wait here. Gate to hostel is ₹70 by auto." },
-    { id: "d-landing", cat: "transport", also: ["food"], name: "D Landing · Bus Stop & Kiosk", lat: 11.2942, lng: 75.8742, verified: false,
-      desc: "Campus bus stop. The kiosk is open from 3 pm to 2:30 am." },
-    { id: "pgp-audi",  cat: "transport", name: "PGP Auditorium · Bus Stop", lat: 11.2931, lng: 75.8737, verified: false,
-      desc: "Start and end point for most campus bus runs." },
+    // Gates, buses & autos
+    { id: "main-gate", cat: "transport", mapName: "IIM Kozhikode Main Gate", name: "Main Gate", lat: 11.301753, lng: 75.873565,
+      desc: "Campus bus stop. Security check here, so keep your Inter-IIM ID ready. Team Namo autos wait here." },
+    { id: "d-landing", cat: "transport", also: ["food"], mapName: "D landing", name: "D Landing", lat: 11.2920947, lng: 75.8736134,
+      desc: "Campus bus stop, plus pickup for autos and cabs. The kiosk/cafe is open 3 pm–2:30 am." },
+    { id: "phase5-stop", cat: "transport", mapName: "Bus Stop", name: "Phase V Bus Stop", lat: 11.2925577, lng: 75.8749792, desc: "Campus bus stop." },
+    { id: "pgp-audi",  cat: "transport", name: "PGP Auditorium", lat: 11.2931, lng: 75.8732, verified: false, desc: "Campus bus stop. Start and end point for most bus runs." },
 
     // Food
-    { id: "mess", cat: "food", name: "H Mess", lat: 11.2967, lng: 75.8739, verified: false,
-      desc: "Breakfast 8–10 am · Lunch 1–3 pm · Dinner 8–10:30 pm · Night mess 10 pm–2:30 am. Washrooms on the mess level and first floor." },
+    { id: "mess", cat: "food", mapName: "H Mess", name: "H Mess", lat: 11.292589, lng: 75.872198,
+      desc: "Breakfast 8–10 am · Lunch 1–3 pm · Dinner 8–10:30 pm. Washrooms in A, B & C Blocks, and on the mess level and first floor." },
+    { id: "night-mess", cat: "food", mapName: "J Top (Silver Spoon Night Mess)", name: "Night Mess (J Top)", lat: 11.2914706, lng: 75.8737486, desc: "Night mess 10 pm–2:30 am." },
 
-    // Stay: contingent common rooms (from the signage plan). Set teams[].hostel to one of these ids.
-    { id: "cr-ab", cat: "stay", name: "A & B Common Room", lat: 11.2978, lng: 75.8712, verified: false, desc: "Washrooms: C Hostel." },
-    { id: "cr-df", cat: "stay", name: "D & F Common Room", lat: 11.2984, lng: 75.8724, verified: false, desc: "Washrooms: K1 Hostel, K2 Hostel and the J Mess building." },
-    { id: "cr-j",  cat: "stay", name: "J Common Room",     lat: 11.2988, lng: 75.8736, verified: false, desc: "Washrooms: K1 Hostel, K2 Hostel and the J Mess building." },
-    { id: "cr-eg", cat: "stay", name: "E & G Common Room", lat: 11.2981, lng: 75.8748, verified: false, desc: "Washrooms: E Hostel and G Hostel." },
-    { id: "cr-mn", cat: "stay", name: "M & N Common Room", lat: 11.2976, lng: 75.8760, verified: false, desc: "Washrooms: Phase 5 building (all three floors)." },
+    // Stay: contingent common rooms
+    { id: "cr-ab", cat: "stay", mapName: "AB Common Room", name: "A & B Common Room", lat: 11.2930145, lng: 75.8742268, desc: "Washrooms: C Hostel. Some pool matches may be played here." },
+    { id: "cr-df", cat: "stay", mapName: "DF Common Room", name: "D & F Common Room", lat: 11.2922309, lng: 75.8735439, desc: "Washrooms: K1 Hostel, K2 Hostel and the J Mess building." },
+    { id: "cr-j",  cat: "stay", mapName: "J Common Room",  name: "J Common Room",     lat: 11.2916864, lng: 75.8737698, desc: "Washrooms: K1 Hostel, K2 Hostel and the J Mess building." },
+    { id: "cr-eg", cat: "stay", mapName: "EG Common Room", name: "E & G Common Room", lat: 11.2925277, lng: 75.8735274, desc: "Washrooms: E Hostel and G Hostel." },
+    { id: "cr-mn", cat: "stay", mapName: "MN Common Room", name: "M & N Common Room", lat: 11.2924253, lng: 75.8754009, desc: "Washrooms: Phase V building (all three floors)." },
 
     // Medical
-    { id: "medical", cat: "medical", name: "Campus Medical Centre", lat: 11.2925, lng: 75.8716, verified: false, desc: "First aid on campus." },
-    { id: "gmch",    cat: "medical", name: "Govt. Medical College Hospital", lat: 11.2716, lng: 75.8373, verified: false, gmaps: "Government Medical College Hospital Kozhikode",
+    { id: "medical", cat: "medical", mapName: "Health Centre", name: "Health Centre", lat: 11.29628, lng: 75.872953, desc: "Campus medical centre. Go here first for any injury or illness." },
+    { id: "gmch",    cat: "medical", name: "Govt. Medical College Hospital", lat: 11.2716, lng: 75.8373, gmaps: "Government Medical College Hospital Kozhikode",
       desc: "Nearest major hospital, about 9 km away. ₹270 by auto." },
 
     // Off-campus transport
-    { id: "kgm",     cat: "transport", name: "Kunnamangalam (KGM) Bus Stand", lat: 11.3050, lng: 75.8781, verified: false, gmaps: "Kunnamangalam Bus Stand",
-      desc: "About 2.7 km from campus. KGM to hostel is ₹80 by auto. City buses run to Kozhikode all day." },
-    { id: "rly",     cat: "transport", name: "Kozhikode Railway Station", lat: 11.2468, lng: 75.7807, verified: false, gmaps: "Kozhikode Railway Station",
+    { id: "kgm",     cat: "transport", mapName: "Kunnamangalam Bus Stand", name: "Kunnamangalam (KGM) Bus Stand", lat: 11.304748, lng: 75.877826, gmaps: "Kunnamangalam Bus Stand",
+      desc: "Buses to Kozhikode city and the railway station. KGM to hostel is ₹80 by auto." },
+    { id: "rly",     cat: "transport", name: "Kozhikode Railway Station", lat: 11.2468, lng: 75.7807, gmaps: "Kozhikode Railway Station",
       desc: "About 16–18 km. ₹450 one way / ₹800 return by auto or taxi." },
-    { id: "airport", cat: "transport", name: "Calicut International Airport (CCJ)", lat: 11.1369, lng: 75.9512, verified: false, gmaps: "Calicut International Airport",
+    { id: "airport", cat: "transport", name: "Calicut International Airport (CCJ)", lat: 11.1369, lng: 75.9512, gmaps: "Calicut International Airport",
       desc: "About 35 km. Drop or pickup ₹900. Waiting and coming back ₹1,200." },
 
     // Around Kozhikode (fares from the Team Namo card)
-    { id: "beach",      cat: "city", name: "Kozhikode Beach", lat: 11.2588, lng: 75.7712, verified: false, gmaps: "Kozhikode Beach", desc: "Sunset and street food. ₹450 / ₹800 return." },
-    { id: "kappad",     cat: "city", name: "Kappad Beach", lat: 11.3830, lng: 75.7190, verified: false, gmaps: "Kappad Beach", desc: "Where Vasco da Gama landed. ₹900 / ₹1,200 return." },
-    { id: "beypore",    cat: "city", name: "Beypore Beach", lat: 11.1597, lng: 75.8040, verified: false, gmaps: "Beypore Beach", desc: "Long breakwater walk. ₹750 / ₹1,100 return." },
-    { id: "thusharagiri", cat: "city", name: "Thusharagiri Waterfalls", lat: 11.4720, lng: 76.0530, verified: false, gmaps: "Thusharagiri Waterfalls", desc: "Half-day trip. ₹950 / ₹1,400 return." },
-    { id: "hilite",     cat: "city", name: "HiLITE Mall", lat: 11.2482, lng: 75.8340, verified: false, gmaps: "HiLITE Mall Kozhikode", desc: "Malls, food court and movies. ₹350 / ₹700 return." }
+    { id: "beach",      cat: "city", name: "Kozhikode Beach", lat: 11.2588, lng: 75.7712, gmaps: "Kozhikode Beach", desc: "Sunset and street food. ₹450 / ₹800 return." },
+    { id: "kappad",     cat: "city", name: "Kappad Beach", lat: 11.3830, lng: 75.7190, gmaps: "Kappad Beach", desc: "Where Vasco da Gama landed. ₹900 / ₹1,200 return." },
+    { id: "beypore",    cat: "city", name: "Beypore Beach", lat: 11.1597, lng: 75.8040, gmaps: "Beypore Beach", desc: "Long breakwater walk. ₹750 / ₹1,100 return." },
+    { id: "thusharagiri", cat: "city", name: "Thusharagiri Waterfalls", lat: 11.4720, lng: 76.0530, gmaps: "Thusharagiri Waterfalls", desc: "Half-day trip. ₹950 / ₹1,400 return." },
+    { id: "hilite",     cat: "city", name: "HiLITE Mall", lat: 11.2482, lng: 75.8340, gmaps: "HiLITE Mall Kozhikode", desc: "Malls, food court and movies. ₹350 / ₹700 return." }
   ],
 
   /* ---------------- SPORT → VENUE ----------------
@@ -145,15 +153,16 @@ window.SITE = {
      unless a full name is given. */
   venues: {
     "Badminton": "devagiri", "Basketball": "bball", "Carrom": "eblock", "Chess": "eblock",
-    "Cricket": "nit", "Football": "phase5", "Futsal": "phase5", "Frisbee": "phase5",
+    "Cricket": "nit", "Football": "football", "Futsal": "phase5", "Frisbee": "phase5",
     "Hockey": "phase5", "Kabaddi": "phase5", "Kho-Kho": "mg-ground", "Pool": "pq",
-    "Squash": "phase5", "Table Tennis": "eblock", "Tennis": "phase5", "Throwball": "mg-ground",
-    "Volleyball": "bball", "Powerlifting": "gym", "Swimming": "phase5"
+    "Squash": "phase5", "Table Tennis": "eblock", "Tennis": "tennis", "Throwball": "mg-ground",
+    "Volleyball": "volley", "Powerlifting": "gym", "Swimming": "swimming"
   },
   venueNotes: {
     "Table Tennis (M)": "E1 Classroom", "Table Tennis (W)": "E2 Classroom",
     "Carrom (Mixed)": "E3 Classroom", "Chess (M)": "E4 Classroom", "Chess (W)": "E4 Classroom",
     "Volleyball (M)": "Volleyball Court (left at Main Gate)", "Volleyball (W)": "Volleyball Court (left at Main Gate)",
+    "Pool (M)": "PQ or AB Common Room", "Pool (W)": "PQ or AB Common Room", "Badminton (M)": "Devagiri (off campus)", "Badminton (W)": "Devagiri (off campus)",
     "Basketball (M)": "Basketball Court (left at Main Gate)", "Basketball (W)": "Basketball Court (left at Main Gate)"
   },
   sportEmoji: {
@@ -214,7 +223,7 @@ window.SITE = {
   /* ---------------- CAMPUS BUSES (from Inter-IIM Bus Schedule) ----------------
      Each trip: d = day key, t = departure time from `from`, via = stops on the way. */
   busStops: ["Main Gate", "Phase V", "D Landing", "PGP Auditorium"],
-  busStopPlace: { "Main Gate": "main-gate", "Phase V": "phase5", "D Landing": "d-landing", "PGP Auditorium": "pgp-audi" },
+  busStopPlace: { "Main Gate": "main-gate", "Phase V": "phase5-stop", "D Landing": "d-landing", "PGP Auditorium": "pgp-audi" },
   buses: [
     {"d": "D1", "t": "07:30", "from": "PGP Auditorium", "via": ["D Landing", "Phase V"], "to": "Main Gate"},
     {"d": "D1", "t": "07:30", "from": "Main Gate", "via": [], "to": "Phase V"},
@@ -357,13 +366,14 @@ window.SITE = {
 
   /* ---------------- WAYFINDING (from the placard signage plan) ---------------- */
   wayfinding: [
-    { where: "Main Ground, at the Main Gate", what: "Kho-Kho & Throwball", place: "mg-ground" },
-    { where: "Volleyball & Basketball Courts: take LEFT at the Main Gate", what: "Volleyball & Basketball", place: "bball" },
-    { where: "Phase 5 Sports Complex", what: "Squash, Swimming, Tennis, Kabaddi, Frisbee, Futsal, Football & Hockey", place: "phase5" },
-    { where: "Phase 5 Classroom entrance (E1–E4)", what: "Table Tennis, Carrom & Chess", place: "eblock" },
-    { where: "Devagiri Sports Complex", what: "Badminton", place: "devagiri" },
-    { where: "PQ Common Room", what: "Pool", place: "pq" },
-    { where: "Student Gymnasium", what: "Powerlifting", place: "gym" },
+    { where: "Main Gate Ground", what: "Kho-Kho & Throwball", place: "mg-ground" },
+    { where: "Courts by the main ground: take LEFT at the Main Gate", what: "Volleyball & Basketball", place: "volley" },
+    { where: "Phase V Sports Complex (down the stairs between the PT Usha & Mary Kom hostels)", what: "Squash, Kabaddi, Frisbee, Futsal & Hockey", place: "phase5" },
+    { where: "Phase V: Football Ground, Tennis Court, Swimming Pool", what: "Football, Tennis & Swimming", place: "football" },
+    { where: "E1–E4 Classrooms, second floor, Phase V classroom entrance", what: "Table Tennis, Carrom & Chess", place: "eblock" },
+    { where: "Devagiri Sports Complex (OFF CAMPUS, ~6–7 km)", what: "Badminton", place: "devagiri" },
+    { where: "PQ or AB Common Room", what: "Pool", place: "pq" },
+    { where: "Student Gymnasium, second floor above J Mess", what: "Powerlifting", place: "gym" },
     { where: "NIT Calicut (off campus, ~7 km)", what: "Cricket", place: "nit" }
   ],
   washrooms: [
@@ -381,7 +391,7 @@ window.SITE = {
     { meal: "Breakfast",  start: "08:00", end: "10:00", where: "mess" },
     { meal: "Lunch",      start: "13:00", end: "15:00", where: "mess" },
     { meal: "Dinner",     start: "20:00", end: "22:30", where: "mess" },
-    { meal: "Night mess", start: "22:00", end: "02:30", where: "mess" },
+    { meal: "Night mess", start: "22:00", end: "02:30", where: "night-mess" },
     { meal: "D Landing kiosk", start: "15:00", end: "02:30", where: "d-landing" }
   ],
 
