@@ -350,3 +350,81 @@ td.r,th.r{text-align:right;white-space:nowrap}
 .legend.below .lg-row{grid-template-columns:auto 1fr auto;font-size:.78rem}
 .legend.below .lg-row small{display:none}
 .legend.below .sw-icons img:nth-child(n+3){display:none}
+
+/* ---------- v7: priority home, food tab, off-campus, mobile ---------- */
+html{scroll-padding-top:calc(var(--top) + 10px)}
+body{font-size:16px}
+.tabbar{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}
+.tabbar a{min-height:48px}
+.hero{padding:18px 18px 16px;border-radius:18px}
+.hero h1{font-size:clamp(1.9rem,8vw,3rem)}
+.notes .notice{font-size:.88rem;padding:10px 12px}
+.vlist{padding:2px 0;overflow:hidden}
+.vrow{display:flex;align-items:center;gap:12px;padding:12px 14px;text-decoration:none;border-bottom:1px solid var(--line);min-height:58px}
+.vrow:last-child{border-bottom:0}
+.vrow:active{background:#f6f4ee}
+.v-ico{flex:0 0 46px;height:46px;border-radius:12px;background:#fff6d6;display:grid;place-items:center;font-size:17px;letter-spacing:-3px;text-align:center;line-height:1}
+.v-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.v-b b{font-weight:850;font-size:.98rem;line-height:1.2}
+.v-b span{font-size:.82rem;color:var(--muted);line-height:1.3}
+.offtag{font-style:normal;font-weight:800;font-size:.68rem;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--bad);padding:2px 6px;border-radius:5px;margin-right:2px}
+.chev{flex:0 0 auto;font-size:1.6rem;color:#c9c4b6;font-weight:300;line-height:1}
+.row.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row.two .btn{padding:12px 10px}
+.mess-card{display:block;text-decoration:none}
+.mc-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mc-top b{display:block;font-size:1.15rem;font-weight:900;font-stretch:112%}
+.mc-top span{font-size:.85rem;color:var(--muted)}
+.mc-status{margin:10px 0 6px;font-size:.95rem}
+.mess-head{display:flex;align-items:center;gap:14px;background:var(--ink);color:#fff}
+.mess-head h2{font-size:1.5rem;font-weight:900;font-stretch:118%}
+.mess-head p{margin:2px 0 0;color:#d8d2c2;font-size:.9rem}
+.mh-ico{font-size:2rem}
+.mess-now{margin-top:12px;padding:12px 14px;border-radius:12px;background:#fff;box-shadow:var(--shadow);font-size:.95rem}
+.mess-now.ok{background:#e3f6f3;color:#075e54}
+.meal-times{display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:0;overflow:hidden}
+.meal-times div{padding:12px 8px;text-align:center;border-right:1px solid var(--line)}
+.meal-times div:last-child{border-right:0}
+.meal-times b{display:block;font-weight:850}
+.meal-times span{font-size:.78rem;color:var(--muted)}
+.meal-times .on{background:#fff3c4}
+.meal{margin-top:10px}
+.meal.now{outline:2px solid var(--ok)}
+.meal.past{opacity:.55}
+.meal-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.meal-h h3{font-size:1.1rem;font-weight:900}
+.meal-h span{font-size:.82rem;color:var(--muted)}
+.meal-h .tag{margin-left:auto}
+.dishes{list-style:none;margin:0;padding:0;columns:2;column-gap:14px}
+.dishes li{break-inside:avoid;padding:5px 0;font-size:.92rem;border-bottom:1px dashed var(--line)}
+.dish{display:inline-flex;align-items:center;gap:6px}
+.or{font-style:normal;font-size:.72rem;font-weight:800;color:var(--muted);margin:0 5px;text-transform:uppercase}
+.vd{display:inline-block;width:10px;height:10px;border:1.5px solid;border-radius:2px;position:relative;flex:0 0 10px}
+.vd::after{content:"";position:absolute;inset:2px;border-radius:50%;background:currentColor}
+.vd.v{color:#2b8a3e}.vd.nv{color:#c92a2a}
+.seg4{grid-auto-columns:1fr}
+.seg4 button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.76rem;padding:8px 2px;line-height:1.1}
+.seg4 button span{font-size:1.1rem}
+.off-card h3{font-size:1.08rem;font-weight:900;margin:0}
+.off-card .off-h p{margin:3px 0 0;font-size:.85rem;color:var(--muted)}
+.off-sub{margin:14px 0 4px;font-size:.9rem;font-weight:850}
+.off-t td{vertical-align:middle}
+.off-t .vs{margin:0;gap:4px}
+.off-t .tm{font-size:.8rem}
+.off-t .tm img{width:20px;height:20px}
+tr.soon{background:#fff0f0}
+.pop-info{font-weight:600;color:var(--ink)!important}
+@media(max-width:420px){
+  .view{padding:12px 12px 24px}
+  .section{margin-top:18px}
+  .section-head h2{font-size:1.05rem}
+  .quick{gap:8px}
+  .qa{font-size:11px;border-radius:14px}
+  .qa i{font-size:21px}
+  .brand-text small{display:none}
+  .hero-emblem{width:92px;top:12px}
+  .dishes{columns:1}
+  .off-t th:nth-child(3),.off-t td:nth-child(3){width:46%}
+}
+@media(max-width:360px){.dishes{columns:1}.tabbar span{font-size:10px}}
+[hidden]{display:none!important}

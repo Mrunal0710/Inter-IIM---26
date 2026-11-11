@@ -32,6 +32,16 @@ From then on, every commit to GitHub redeploys automatically in about 30 seconds
 
 ---
 
+## 2a. Quick edits during the event (all in `data.js`)
+
+| What | Where |
+|---|---|
+| Mess timings or menu | `mess.meals` (times) and `mess.menu.D1/D2/D3` (dishes; write `A / B` for either-or) |
+| Men's accommodation shuttle / any official off-campus transport | `offsite[].trips`, e.g. `{ d: "D1", t: "07:00", from: "D Landing", note: "Team bus" }` |
+| Travel time to NIT / Devagiri, or how early teams should arrive | `offsite[].travelMin`, `offsite[].reportMin` |
+| Bring back the fixtures tab | `config.showFixtures: true` |
+| Map layer order / layers that start hidden | `config.mapLayerOrder`, `config.mapLayersOff` |
+
 ## 2. Still to fill in (search `data.js` for EDIT)
 
 | What | Where |

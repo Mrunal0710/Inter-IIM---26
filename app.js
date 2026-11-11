@@ -140,91 +140,93 @@
     } catch { box.innerHTML = `<p class="small muted" style="margin:0">Weather is unavailable offline.</p>`; }
   }
 
-  /* =================================================================== HOME */
+  /* =================================================================== HOME
+     Priority for first-time visitors: sports venues → common rooms → washrooms → mess → everything else. */
   let homeBusStop = store.get("busFrom") || "Main Gate";
-  let homeMine = true;
+  function distKm(a, b) { const R = 6371, r = x => x * Math.PI / 180, dLa = r(b[0] - a[0]), dLo = r(b[1] - a[1]);
+    const x = Math.sin(dLa / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
+  const isOff = p => !!p && distKm([p.lat, p.lng], C.mapCenter) > 2.5;
+  function venueGroups() {
+    const by = {}; Object.entries(S.venues).forEach(([sport, pid]) => (by[pid] ||= []).push(sport));
+    return Object.entries(by).map(([pid, sports]) => ({ place: placeById(pid), sports })).filter(g => g.place)
+      .sort((a, b) => isOff(a.place) - isOff(b.place));
+  }
+  function mealStatus() {
+    const n = now(), M = S.mess.meals.map(m => ({ ...m, st: ev(m.start), en: ev(m.end) }));
+    return { cur: M.find(m => n.min >= m.st && n.min < m.en), next: M.find(m => m.st > n.min), n };
+  }
+  const chev = `<span class="chev" aria-hidden="true">›</span>`;
   function renderHome() {
-    const ph = phase(), t = myTeam(), n = now();
-    const firstFx = fxSorted(FX.filter(f => f.d === S.days[0].key))[0];
+    const ph = phase();
     let countdown = "";
     if (ph.kind === "before") {
-      const start = new Date(`${S.days[0].date}T${firstFx ? firstFx.t : "08:00"}:00`), ms = start - new Date();
+      const ms = new Date(`${S.days[0].date}T08:00:00`) - new Date();
       const d = Math.max(0, Math.floor(ms / 864e5)), h = Math.max(0, Math.floor(ms / 36e5) % 24), m = Math.max(0, Math.floor(ms / 6e4) % 60);
       countdown = `<div class="countdown"><div><b>${d}</b><span>days</span></div><div><b>${h}</b><span>hrs</span></div><div><b>${m}</b><span>min</span></div></div>`;
     }
     const range = `${fmtDate(S.days[0].date)} – ${fmtDate(S.days[S.days.length - 1].date)}`;
     const notes = (S.announcements || []).map(a => `<div class="notice ${a.level === "alert" ? "alert" : ""}"><i>${a.level === "alert" ? "⚠️" : "📣"}</i><div>${esc(a.text)}</div></div>`).join("");
 
-    // Up next (fixtures)
-    const day = firstUpcomingDay();
-    let upHTML = "";
-    if (day) {
-      const live = isToday(day.key);
-      let list = fxSorted(FX.filter(f => f.d === day.key && (!live || ev(f.t) >= n.min - 45)));
-      const mineList = t ? list.filter(f => involves(f, t)) : [];
-      const showMine = t && homeMine && mineList.length;
-      list = (showMine ? mineList : list).slice(0, 6);
-      upHTML = `<div class="section"><div class="section-head"><h2>${live ? "Up next" : `${esc(day.label)} · ${fmtDate(day.date)}`}</h2><a href="#sports">Full schedule →</a></div>
-        ${t ? `<div class="chips" style="margin-bottom:10px"><button class="chip ${showMine ? "on" : ""}" data-mine="1">${badge(t, 16)} matches</button><button class="chip ${!showMine ? "on" : ""}" data-mine="0">All sports</button></div>` : ""}
-        <div class="card list fx-list">${list.length ? list.map(f => fxRow(f, live)).join("") : `<p class="muted small" style="margin:0">No more fixtures today.</p>`}</div></div>`;
-    }
+    // 1. Sports venues
+    const venues = venueGroups().map(g => { const off = isOff(g.place);
+      return `<a class="vrow" href="#map/${esc(g.place.id)}"><div class="v-ico">${g.sports.slice(0, 3).map(s => S.sportEmoji[s] || "🏅").join("")}</div>
+        <div class="v-b"><b>${esc(g.sports.join(" · "))}</b><span>${off ? `<em class="offtag">Off campus</em> ` : ""}${esc(g.place.name)}</span></div>${chev}</a>`; }).join("");
+    // 2. Common rooms & stay
+    const rooms = S.places.filter(p => p.cat === "stay").map(p => `<a class="vrow" href="#map/${esc(p.id)}"><div class="v-ico">${isOff(p) ? "🛏️" : "🛋️"}</div>
+      <div class="v-b"><b>${esc(p.name)}</b><span>${isOff(p) ? `<em class="offtag">Off campus</em> ` : ""}${esc((p.desc || "").replace(/^Washrooms:\s*/, "🚻 "))}</span></div>${chev}</a>`).join("");
+    // 4. Mess
+    const ms = mealStatus(), live = !!todayDay();
+    const messLine = !live ? `Breakfast ${fmt12(S.mess.meals[0].start)} · Lunch ${fmt12(S.mess.meals[1].start)} · Dinner ${fmt12(S.mess.meals[2].start)}`
+      : ms.cur ? `<span class="tag ok">● Serving ${esc(ms.cur.label)}</span> till ${fmt12(ms.cur.end)}`
+      : ms.next ? `Next: <b>${esc(ms.next.label)}</b> at ${fmt12(ms.next.start)} (${fmtIn(ms.next.st - ms.n.min)})` : `Mess closed for today`;
 
-    // Your IIM
-    let mine = "";
-    if (t) {
-      const hs = placeById(t.hostel), cnt = day ? FX.filter(f => f.d === day.key && involves(f, t)).length : 0;
-      mine = `<div class="section"><div class="card mine" style="--c:${esc(t.color)}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap">
-        <div class="row" style="flex-wrap:nowrap"><img src="${esc(t.logo)}" alt="" width="48" height="48"><div><b class="display" style="font-size:1.1rem">${esc(t.name)}</b>
-        <div class="small muted">${day ? `${cnt} fixture${cnt === 1 ? "" : "s"} on ${esc(day.label)}` : "Thanks for coming!"}${hs ? ` · Staying at <a href="#map/${esc(hs.id)}">${esc(hs.name)}</a>` : ""}</div>
-        ${(() => { const w = hs && S.washrooms.find(x => x.place === hs.id); return w ? `<div class="small" style="margin-top:3px">🚻 Washrooms: <b>${esc(w.use)}</b></div>` : ""; })()}</div></div>
-        <button class="btn ghost sm" id="chg">Change</button></div></div></div>`;
-    } else {
-      mine = `<div class="section"><button class="card pick-cta" id="pickCont"><div class="logos">${S.teams.map(x => `<img src="${esc(x.logo)}" alt="" width="30" height="30">`).join("")}</div>
-        <b>Which IIM are you with?</b><div class="small muted">Tap to see your team's matches first.</div></button></div>`;
-    }
-
-    // Buses from a stop
+    // Next campus buses
     let busHTML = "";
     const bday = firstUpcomingDay();
     if (bday) {
-      const live = isToday(bday.key);
-      const nexts = busesOn(bday.key).filter(b => seq(b).slice(0, -1).includes(homeBusStop) && (!live || ev(b.t) >= n.min)).slice(0, 3);
-      busHTML = `<div class="section"><div class="section-head"><h2>Next campus buses</h2><a href="#transport/bus">Bus finder →</a></div>
+      const lv = isToday(bday.key), n = now();
+      const nexts = busesOn(bday.key).filter(b => seq(b).slice(0, -1).includes(homeBusStop) && (!lv || ev(b.t) >= n.min)).slice(0, 3);
+      busHTML = `<div class="section"><div class="section-head"><h2>🚌 Next campus buses</h2><a href="#transport/bus">Bus finder →</a></div>
         <div class="chips scroll-x" style="margin-bottom:10px">${S.busStops.map(s => `<button class="chip ${s === homeBusStop ? "on" : ""}" data-stop="${esc(s)}">From ${esc(s)}</button>`).join("")}</div>
-        <div class="card list">${nexts.length ? nexts.map(b => `<div class="bus-row"><div class="bt"><b>${fmt12(b.t)}</b>${live ? `<small>${fmtIn(ev(b.t) - n.min)}</small>` : `<small>${esc(bday.label)}</small>`}</div>
-          <div class="route-line">${routeHTML(b, homeBusStop)}</div></div>`).join("") : `<p class="muted small" style="margin:0">No more buses from ${esc(homeBusStop)} today. Try an auto from the Main Gate.</p>`}</div></div>`;
+        <div class="card list">${nexts.length ? nexts.map(b => `<div class="bus-row"><div class="bt"><b>${fmt12(b.t)}</b>${lv ? `<small>${fmtIn(ev(b.t) - n.min)}</small>` : `<small>${esc(bday.label)}</small>`}</div>
+          <div class="route-line">${routeHTML(b, homeBusStop)}</div></div>`).join("") : `<p class="muted small" style="margin:0">No more buses from ${esc(homeBusStop)} today. Try an auto.</p>`}</div></div>`;
     }
-
-    // Food now
-    const fs = foodStatus(), open = fs.filter(f => f.open);
-    const nextFood = fs.filter(f => !f.open && f.st > n.min).sort((a, b) => a.st - b.st)[0];
-    const foodHTML = `<div class="card"><div class="row" style="gap:6px">${open.length ? open.map(f => `<span class="tag ok">● ${esc(f.meal)} · till ${fmt12(f.end)}</span>`).join("") : `<span class="tag">Nothing open right now</span>`}</div>
-      ${nextFood ? `<p class="small muted" style="margin:8px 0 0">Next: ${esc(nextFood.meal)} at ${fmt12(nextFood.start)}</p>` : ""}</div>`;
 
     $("#view-home").innerHTML = `
       <div class="hero"><img class="hero-emblem" src="${EMBLEM}" alt=""><div class="kicker">Hosted by ${esc(C.host)}</div><h1>${esc(C.eventName)}</h1>
-        <p>Your guide to venues, fixtures, buses, autos and food.<br><b>${range}</b></p>${countdown}</div>
-      ${notes ? `<div class="section">${notes}</div>` : ""}
+        <p><b>${range}</b><br>Venues, mess, buses and autos, all in one place.</p>${countdown}</div>
+      ${notes ? `<div class="section notes">${notes}</div>` : ""}
+
+      <div class="section"><div class="section-head"><h2>🏟️ Sports venues</h2><a href="#map/only-sports">All on map →</a></div>
+        <div class="card vlist">${venues}</div>
+        <a class="btn ghost full" style="margin-top:10px" href="#transport/offsite">🚌 Off-campus venues: when to leave</a></div>
+
+      <div class="section"><div class="section-head"><h2>🛋️ Common rooms</h2><a href="#map/only-common">On map →</a></div>
+        <div class="card vlist">${rooms}</div></div>
+
+      <div class="section"><div class="section-head"><h2>🚻 Washrooms</h2></div>
+        <div class="row two"><a class="btn full" href="#map/only-utility">Show on map</a><a class="btn ghost full" href="#help/washrooms">Which one to use?</a></div></div>
+
+      <div class="section"><div class="section-head"><h2>🍽️ Mess</h2><a href="#food">Menu →</a></div>
+        <a class="card mess-card" href="#food"><div class="mc-top"><div><b>${esc(S.mess.name)}</b><span>${esc(S.mess.where)} · for all contingents</span></div>${chev}</div>
+        <div class="mc-status">${messLine}</div><div class="small muted">🎟️ ${esc(S.mess.note)}</div></a></div>
+
       <div class="section quick">
-        ${C.sportagonUrl ? `<a class="qa primary" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener"><i>🏆</i>Sportagon</a>` : `<a class="qa primary" href="#sports"><i>🏆</i>Fixtures</a>`}
+        ${C.sportagonUrl ? `<a class="qa primary" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener"><i>🏆</i>Sportagon</a>` : `<span class="qa primary" aria-disabled="true"><i>🏆</i>Sportagon</span>`}
         <a class="qa dark" href="#map"><i>🗺️</i>Map</a>
         <a class="qa" href="#transport/bus"><i>🚌</i>Campus bus</a>
         <a class="qa" href="#transport/autos"><i>🛺</i>Autos</a>
         <a class="qa" href="#transport/fares"><i>₹</i>Fares</a>
-        <a class="qa" href="#help/food"><i>🍛</i>Food</a>
-        <a class="qa" href="#help/washrooms"><i>🚻</i>Washrooms</a>
+        <a class="qa" href="#food"><i>🍛</i>Menu</a>
+        <a class="qa" href="#help/wayfinding"><i>🧭</i>Directions</a>
         <a class="qa sos" href="#help"><i>🚨</i>SOS</a>
       </div>
-      ${mine}${upHTML}${busHTML}
+      ${busHTML}
       <div class="section grid grid-2">
-        <div><div class="section-head"><h2>Food open now</h2><a href="#help/food">Timings →</a></div>${foodHTML}</div>
         <div><div class="section-head"><h2>Weather on campus</h2></div><div class="card" id="wxBox"><p class="small muted" style="margin:0">Loading…</p></div></div>
+        <div><div class="banner"><div><h3>Live scores & results</h3><p>Fixtures, scores and the medal table are on ${esc(C.sportagonName)}.</p></div>${sportagonLink()}</div></div>
       </div>
-      <div class="section"><div class="banner"><div><h3>Live scores & results</h3><p>Scores, results and the medal table are on ${esc(C.sportagonName)}.</p></div>${sportagonLink()}</div></div>
       <div class="foot"><img src="${CREST}" alt="IIM Kozhikode Sports Committee" width="110"><p>Made by the IIM Kozhikode Sports Committee. Add this page to your home screen.</p></div>`;
-    $("#chg")?.addEventListener("click", openTeamDialog);
-    $("#pickCont")?.addEventListener("click", openTeamDialog);
-    $$("#view-home [data-mine]").forEach(b => b.onclick = () => { homeMine = b.dataset.mine === "1"; renderHome(); });
     $$("#view-home [data-stop]").forEach(b => b.onclick = () => { homeBusStop = b.dataset.stop; store.set("busFrom", homeBusStop); renderHome(); });
     fillWeather();
   }
@@ -234,6 +236,40 @@
     return `<div class="fx ${live && n >= st + 60 ? "past" : ""}"><div class="fx-t">${fmt12(f.t)}</div><div class="fx-b">
       <div class="fx-s">${sportEmoji(f.s)} ${esc(f.s)} ${state}</div>${matchHTML(f.m)}
       <div class="small muted">${v ? `📍 <a href="#map/${esc(v.id)}">${esc(note || v.name)}</a>${note ? ` · ${esc(v.name)}` : ""}` : ""}</div></div></div>`;
+  }
+
+  /* =================================================================== FOOD (BL Mess) */
+  let fDay = null;
+  const NONVEG = /chicken|egg|omelette|mutton|fish|prawn/i;
+  function dishHTML(item) {
+    const parts = NONVEG.test(item) && item.includes(" / ") ? item.split(" / ") : [item];
+    return `<li>${parts.map(x => `<span class="dish"><i class="vd ${NONVEG.test(x) ? "nv" : "v"}"></i>${esc(x)}</span>`).join(`<em class="or">or</em>`)}</li>`;
+  }
+  function renderFood() {
+    const M = S.mess, p = placeById(M.place);
+    if (!fDay) fDay = (firstUpcomingDay() || S.days[0]).key;
+    const live = isToday(fDay), ms = mealStatus(), menu = M.menu[fDay] || {};
+    const status = !todayDay() ? "" : ms.cur ? `<div class="mess-now ok">● Now serving <b>${esc(ms.cur.label)}</b> until ${fmt12(ms.cur.end)}</div>`
+      : ms.next ? `<div class="mess-now">Next: <b>${esc(ms.next.label)}</b> at ${fmt12(ms.next.start)} · ${fmtIn(ms.next.st - ms.n.min)}</div>` : `<div class="mess-now">The mess is closed for today. See you at breakfast!</div>`;
+    const fs = foodStatus();
+    $("#view-food").innerHTML = `
+      <div class="card mess-head"><div class="mh-ico">🍽️</div><div><h2>${esc(M.name)}</h2><p>${esc(M.where)} · for ALL contingents</p></div></div>
+      <div class="notice alert" style="margin-top:10px"><i>🎟️</i><div>${esc(M.note)}</div></div>
+      <div class="row two" style="margin-top:10px">${p ? `<a class="btn full" href="#map/${esc(p.id)}">Show on map</a><a class="btn ghost full" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a>` : ""}</div>
+      ${status}
+      <div class="section"><div class="section-head"><h2>Timings</h2></div><div class="card meal-times">
+        ${M.meals.map(m => `<div class="${live && ms.cur?.id === m.id ? "on" : ""}"><b>${esc(m.label)}</b><span>${fmt12(m.start)} – ${fmt12(m.end)}</span></div>`).join("")}</div></div>
+      <div class="section"><div class="section-head"><h2>Menu</h2><span class="small muted"><i class="vd v"></i> veg <i class="vd nv"></i> non-veg</span></div>
+        <div class="chips scroll-x" style="margin-bottom:10px">${S.days.map(d => `<button class="chip ${fDay === d.key ? "on" : ""}" data-fd="${d.key}">${fmtDate(d.date)}${isToday(d.key) ? " · today" : ""}</button>`).join("")}</div>
+        ${M.meals.map(m => { const items = menu[m.id] || [], st = ev(m.start), en = ev(m.end), n = ms.n.min;
+          const tag = live ? (n >= st && n < en ? `<span class="tag ok">● Serving now</span>` : n >= en ? `<span class="tag">Over</span>` : `<span class="tag">${fmtIn(st - n)}</span>`) : "";
+          return `<div class="card meal ${live && n >= en ? "past" : ""} ${live && n >= st && n < en ? "now" : ""}"><div class="meal-h"><h3>${esc(m.label)}</h3><span>${fmt12(m.start)} – ${fmt12(m.end)}</span>${tag}</div>
+            ${items.length ? `<ul class="dishes">${items.map(dishHTML).join("")}</ul>` : `<p class="small muted">Menu not posted yet.</p>`}</div>`; }).join("")}
+      </div>
+      <div class="section"><div class="section-head"><h2>☕ Snacks</h2></div><div class="card"><table><tbody>
+        ${fs.map(f => { const pl = placeById(f.where); return `<tr><td><b>${esc(f.meal)}</b>${f.open ? ` <span class="tag ok">Open</span>` : ""}${pl ? `<div class="small"><a href="#map/${esc(pl.id)}">On map</a></div>` : ""}</td><td class="r">${fmt12(f.start)} – ${fmt12(f.end)}</td></tr>`; }).join("")}
+      </tbody></table></div></div>`;
+    $$("#view-food [data-fd]").forEach(b => b.onclick = () => { fDay = b.dataset.fd; renderFood(); });
   }
 
   /* =================================================================== SPORTS */
@@ -372,6 +408,7 @@
     return `<div class="pop"><div class="cat">${ic ? `<img src="${ic.src}" width="16" height="16" alt="">` : ""} ${esc(layer?.name || "")}</div><h4>${esc(f.name)}</h4>
       ${f.media[0] ? `<img class="pop-img" src="${esc(f.media[0])}" alt="" loading="lazy">` : ""}
       ${sp.length ? `<div class="row" style="gap:4px;margin-top:4px">${sp.map(s => `<span class="tag">${S.sportEmoji[s] || ""} ${esc(s)}</span>`).join("")}</div>` : ""}
+      ${(() => { const p = placeForFeat(f); return p?.desc && !f.desc.includes(p.desc.slice(0, 20)) ? `<p class="pop-info">${linkify(p.desc)}</p>` : ""; })()}
       ${f.desc ? `<p>${linkify(f.desc)}</p>` : ""}
       <div class="row"><a class="btn sm" href="${featDirections(f)}" target="_blank" rel="noopener">Directions ↗</a>
       ${sp.length ? `<a class="btn sm accent" href="#sports">Fixtures</a>` : ""}</div></div>`;
@@ -442,9 +479,12 @@
   }
   function setData(data, source) {
     Object.values(groups).forEach(g => map.removeLayer(g)); groups = {}; fmarkers = {};
-    const prevHidden = visible ? LAYERS.filter(l => !visible.has(l.id)).map(l => l.name) : (C.mapStartLayersHidden || []).map(cleanLayer);
+    const rank = l => { const i = (C.mapLayerOrder || []).findIndex(k => l.name.toLowerCase().includes(k)); return i < 0 ? 99 : i; };
+    data.layers.sort((a, b) => rank(a) - rank(b));
+    const offByDefault = l => (C.mapLayersOff || []).some(k => l.name.toLowerCase().includes(k));
+    const prevHidden = visible ? LAYERS.filter(l => !visible.has(l.id)).map(l => l.name) : null;
     LAYERS = data.layers; FEATS = data.feats; mapSource = source;
-    visible = new Set(LAYERS.filter(l => !prevHidden.includes(l.name)).map(l => l.id));
+    visible = new Set(LAYERS.filter(l => prevHidden ? !prevHidden.includes(l.name) : !offByDefault(l)).map(l => l.id));
     LAYERS.forEach(l => { groups[l.id] = L.featureGroup(); if (visible.has(l.id)) groups[l.id].addTo(map); });
     FEATS.forEach(f => {
       let lyr;
@@ -521,6 +561,8 @@
   function focusPlace(id) {   // id = a place id from data.js (links like #map/football)
     if (!FEATS.length || firstFit) { pendingFocus = id; return; }
     firstFit = false;
+    if (id.startsWith("only-")) { const kw = id.slice(5).toLowerCase(); const ids = LAYERS.filter(l => l.name.toLowerCase().includes(kw)).map(l => l.id);
+      if (ids.length) { setVisible(ids); setTimeout(fitVisible, 50); } return; }
     const p = placeById(id); if (!p) return;
     const f = FEATS.find(x => x.id === id) || (p.mapName && FEATS.find(x => nameKey(x.name) === nameKey(p.mapName)));
     if (f) return openFeat(f.id);
@@ -534,10 +576,10 @@
   let bFrom = store.get("busFrom") || "Main Gate", bTo = store.get("busTo") || "PGP Auditorium", bDay = null, bAll = false;
   function renderTransport() {
     const v = $("#view-transport");
-    v.innerHTML = `<div class="seg">${[["bus", "🚌 Campus bus"], ["autos", "🛺 Autos"], ["fares", "₹ Fares"], ["around", "🧭 City"]]
-      .map(([k, l]) => `<button class="${tTab === k ? "on" : ""}" data-t="${k}">${l}</button>`).join("")}</div><div id="tBody"></div>`;
+    v.innerHTML = `<div class="seg seg4">${[["bus", "🚌", "Campus bus"], ["offsite", "🏏", "Off-campus"], ["autos", "🛺", "Autos"], ["fares", "₹", "Fares"]]
+      .map(([k, e, l]) => `<button class="${tTab === k ? "on" : ""}" data-t="${k}"><span>${e}</span>${l}</button>`).join("")}</div><div id="tBody"></div>`;
     $$("#view-transport .seg button").forEach(b => b.onclick = () => { tTab = b.dataset.t; history.replaceState(null, "", `#transport/${tTab}`); renderTransport(); });
-    ({ bus: renderBus, autos: renderAutos, fares: renderFares, around: renderAround })[tTab]();
+    ({ bus: renderBus, offsite: renderOffsite, autos: renderAutos, fares: renderFares })[tTab]();
   }
   function renderBus() {
     if (!bDay) bDay = (firstUpcomingDay() || S.days[0]).key;
@@ -594,16 +636,40 @@
         ${items.map(i => `<tr><td>${esc(i.to)}</td><td class="r"><b>${rs(i.drop)}</b></td><td class="r muted">${rs(i.ret)}</td></tr>`).join("")}</tbody></table></div></div>`; }).join("") || `<div class="empty-note">No match. Ask a chettan for the fare.</div>`}`;
     const inp = $("#fSearch"); inp.oninput = () => { fQuery = inp.value; const pos = inp.selectionStart; renderFares(); const n = $("#fSearch"); n.focus(); n.setSelectionRange(pos, pos); };
   }
-  function renderAround() {
-    const hubs = S.places.filter(p => p.cat === "transport" && p.gmaps);
-    $("#tBody").innerHTML = `<div class="list">${S.publicTransport.map(t => `<div class="card"><h4 style="margin:0 0 4px;font-weight:850">${esc(t.title)}</h4><p style="margin:0" class="small">${esc(t.text)}</p></div>`).join("")}</div>
-      <div class="section"><div class="section-head"><h2>Stations & airport</h2></div><div class="list">${hubs.map(p => `<div class="card"><div class="item"><div class="ico">${catById(p.cat).emoji}</div>
-        <div class="body"><h4>${esc(p.name)}</h4><p>${esc(p.desc || "")}</p><div class="row" style="margin-top:10px"><a class="btn sm" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a></div></div></div></div>`).join("")}</div></div>`;
+  let oDay = null;
+  const hmOf = m => { m = ((m % 1440) + 1440) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+  function renderOffsite() {
+    if (!oDay) oDay = (firstUpcomingDay() || S.days[0]).key;
+    const live = isToday(oDay), n = now().min;
+    const cards = S.offsite.map(r => {
+      const p = placeById(r.place);
+      const matches = r.sport ? fxSorted(FX.filter(f => f.d === oDay && baseSport(f.s) === r.sport)) : [];
+      const trips = (r.trips || []).filter(t => t.d === oDay).sort((a, b) => ev(a.t) - ev(b.t));
+      const rows = matches.map(f => { const st = ev(f.t), leave = st - r.travelMin - (r.reportMin || 0), past = live && n > st;
+        const soon = live && !past && n >= leave - 30 && n <= leave;
+        return `<tr class="${past ? "past-r" : ""} ${soon ? "soon" : ""}"><td><b>${fmt12(hmOf(leave))}</b>${soon ? `<div class="small" style="color:var(--bad)">Leave now</div>` : ""}</td>
+          <td>${fmt12(f.t)}<div class="small muted">${esc(f.s.replace(r.sport, "").trim())}</div></td><td>${matchHTML(f.m)}</td></tr>`; }).join("");
+      return `<div class="card off-card"><div class="off-h"><div><h3>${esc(r.title)}</h3><p>${esc(r.km)} · about ${r.travelMin} min from campus</p></div></div>
+        <p class="small" style="margin:8px 0 10px">${esc(r.how)}</p>
+        <div class="row two">${p ? `<a class="btn sm full" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a><a class="btn sm ghost full" href="#map/${esc(p.id)}">On map</a>` : ""}</div>
+        ${trips.length ? `<h4 class="off-sub">🚌 Official transport</h4><table><tbody>${trips.map(t => `<tr class="${live && ev(t.t) < n ? "past-r" : ""}"><td><b>${fmt12(t.t)}</b></td><td>${esc(t.from || "")}${t.note ? `<div class="small muted">${esc(t.note)}</div>` : ""}</td></tr>`).join("")}</tbody></table>` : ""}
+        ${rows ? `<h4 class="off-sub">⏱ When to leave campus <span class="small muted">(arrive ${r.reportMin || 0} min early)</span></h4>
+          <table class="off-t"><thead><tr><th>Leave by</th><th>Match</th><th>Teams</th></tr></thead><tbody>${rows}</tbody></table>`
+          : !trips.length ? `<p class="small muted" style="margin:10px 0 0">${r.sport ? `No ${esc(r.sport.toLowerCase())} matches on this day.` : "Shuttle timings will be posted here."}</p>` : ""}
+      </div>`; }).join("");
+    const hubs = S.places.filter(p => ["rly", "airport", "kgm"].includes(p.id));
+    $("#tBody").innerHTML = `
+      <div class="chips scroll-x" style="margin-bottom:12px">${S.days.map(d => `<button class="chip ${oDay === d.key ? "on" : ""}" data-o="${d.key}">${esc(d.label)} · ${fmtDate(d.date)}${isToday(d.key) ? " · today" : ""}</button>`).join("")}</div>
+      <div class="list">${cards}</div>
+      <p class="small muted">"Leave by" times are worked out from the fixture schedule. If your match moves, check Sportagon and leave earlier rather than later.</p>
+      <div class="section"><div class="section-head"><h2>Getting around Kozhikode</h2></div><div class="list">
+        ${S.publicTransport.map(t => `<div class="card"><h4 style="margin:0 0 4px;font-weight:850">${esc(t.title)}</h4><p style="margin:0" class="small">${esc(t.text)}</p></div>`).join("")}
+        ${hubs.map(p => `<div class="card"><h4 style="margin:0 0 4px;font-weight:850">${esc(p.name)}</h4><p class="small" style="margin:0 0 8px">${esc(p.desc || "")}</p><a class="btn sm" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a></div>`).join("")}</div></div>`;
+    $$("#tBody [data-o]").forEach(b => b.onclick = () => { oDay = b.dataset.o; renderOffsite(); });
   }
 
   /* =================================================================== HELP */
   function renderHelp() {
-    const fs = foodStatus();
     const outings = S.places.filter(p => p.cat === "city");
     $("#view-help").innerHTML = `
       <div class="section-head" style="margin-top:0"><h2>🚨 Emergency</h2></div>
@@ -617,9 +683,7 @@
       <div class="section" id="washrooms"><div class="section-head"><h2>🚻 Washrooms</h2></div><div class="card"><table><thead><tr><th>If you're at</th><th>Use</th></tr></thead><tbody>
         ${S.washrooms.map(w => `<tr><td><a href="#map/${esc(w.place)}"><b>${esc(w.at)}</b></a></td><td>${esc(w.use)}</td></tr>`).join("")}</tbody></table></div></div>
 
-      <div class="section" id="food"><div class="section-head"><h2>🍛 Food timings</h2><a href="#map/mess">Mess on map →</a></div><div class="card"><table><tbody>
-        ${fs.map(f => { const p = placeById(f.where); return `<tr><td><b>${esc(f.meal)}</b>${f.open ? ` <span class="tag ok">Open</span>` : ""}<div class="small muted">${p ? esc(p.name.split("·")[0].trim()) : ""}</div></td><td class="r">${fmt12(f.start)} – ${fmt12(f.end)}</td></tr>`; }).join("")}
-      </tbody></table></div></div>
+      <div class="section"><a class="card mess-card" href="#food"><div class="mc-top"><div><b>🍽️ Mess: ${esc(S.mess.name)}</b><span>${esc(S.mess.where)} · timings & menu</span></div>${chev}</div></a></div>
 
       <div class="section"><div class="section-head"><h2>FAQs</h2></div>${S.faqs.map(f => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join("")}</div>
 
@@ -633,29 +697,31 @@
         <button class="btn accent" id="shareBtn">Share ↗</button></div></div>
       <div class="foot"><img src="${CREST}" alt="IIM Kozhikode Sports Committee" width="110"></div>`;
     $("#shareBtn").onclick = async () => {
-      const url = C.siteUrl || location.origin + location.pathname, text = `${C.eventName} Contingent Hub: fixtures, campus buses, autos and map`;
+      const url = C.siteUrl || location.origin + location.pathname, text = `${C.eventName} Contingent Hub: venues, mess menu, buses, autos and map`;
       if (navigator.share) { try { await navigator.share({ title: C.eventName, text, url }); } catch { /* cancelled */ } }
       else window.open(`https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`, "_blank", "noopener");
     };
   }
 
   /* =================================================================== ROUTER */
-  const views = ["home", "map", "sports", "transport", "help"];
+  const views = ["home", "map", "food", "sports", "transport", "help"];
   function current() { const [v0, arg] = (location.hash.slice(1) || "home").split("/"); return { v: views.includes(v0) ? v0 : "home", arg }; }
   function route() {
     const { v, arg } = current();
     $$(".view").forEach(s => s.classList.toggle("active", s.id === `view-${v}`));
     $$(".tabbar a").forEach(a => a.classList.toggle("active", a.dataset.tab === v));
     if (v === "home") renderHome();
+    if (v === "food") renderFood();
     if (v === "sports") { sTab = arg === "venues" ? "venues" : "fixtures"; renderSports(); }
-    if (v === "transport") { if (["bus", "autos", "fares", "around"].includes(arg)) tTab = arg; renderTransport(); }
+    if (v === "transport") { if (["bus", "offsite", "autos", "fares"].includes(arg)) tTab = arg; renderTransport(); }
     if (v === "help") { renderHelp(); if (arg) setTimeout(() => document.getElementById(arg)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
     if (v === "map") { initMap(); setTimeout(() => { map?.invalidateSize(); if (arg) focusPlace(arg); }, 60); }
     if (!(v === "help" && arg)) window.scrollTo(0, 0);
   }
   function rerender() {
     const { v } = current();
-    if (v === "home") renderHome(); else if (v === "sports") renderSports(); else if (v === "transport" && tTab === "bus") renderBus();
+    if (v === "home") renderHome(); else if (v === "food") renderFood(); else if (v === "sports") renderSports();
+    else if (v === "transport" && tTab === "bus") renderBus(); else if (v === "transport" && tTab === "offsite") renderOffsite();
   }
 
   /* =================================================================== LIVE DATA */
@@ -720,6 +786,8 @@
     $("#evName").textContent = C.eventName; $("#evTag").textContent = C.tagline;
     document.title = `${C.eventName} · ${C.tagline}`;
     $("#contBtn").onclick = openTeamDialog;
+    $("#contBtn").hidden = !C.showFixtures && !S.teams.some(t => t.hostel);
+    if (C.showFixtures) $('.tabbar a[data-tab="food"]').insertAdjacentHTML("beforebegin", '<a href="#sports" data-tab="sports"><i>🏆</i><span>Sports</span></a>');
     $("#mapSearch").addEventListener("input", () => filterPlaces());
     renderTeamBtn(); renderPhase();
     window.addEventListener("hashchange", route);

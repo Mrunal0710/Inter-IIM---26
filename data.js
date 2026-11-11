@@ -33,7 +33,11 @@ window.SITE = {
        The sheet must be shared as "Anyone with the link → Viewer".
        If it can't be read, or its layout changes, the site falls back
        to fixtures.js. Set id to "" to turn live sync off. */
-    mapStartLayersHidden: [],          // optional: layer names to start switched off, e.g. ["8. Outside the Gate - Kunnamangalam"]
+    showFixtures: false,               // true = show the Sports/fixtures tab again (fixtures are still used for off-campus travel times)
+    /* Map layer priority (top first) and layers that start switched off. Matched against your
+       My Maps layer names (case-insensitive, partial match). */
+    mapLayerOrder: ["sports venue", "common room", "utility", "food", "event point", "gates", "health", "academic", "hostel", "outside"],
+    mapLayersOff: ["academic", "hostel", "outside"],
     scheduleSheet: {
       id: "1M5e54Ff0bAhkAeLbHIN5E2FSLR3fO5UtF8BzWR8HvCI",
       tabs: { D1: "Day 1 - 13th", D2: "Day 2 - 14th", D3: "Day 3 - 15th" }
@@ -52,9 +56,9 @@ window.SITE = {
 
   /* ---------------- ANNOUNCEMENTS ---------------- level: "info" | "alert" */
   announcements: [
-    { level: "alert", text: "Two sports are OFF CAMPUS: cricket at the NIT Calicut ground (~7 km) and badminton at the Devagiri Sports Complex (~6–7 km). Everything else is on the IIMK campus." },
+    { level: "alert", text: "Cricket (NIT Calicut ground) and badminton (Devagiri Sports Complex) are OFF CAMPUS. Travel → Off-campus shows when to leave for every match." },
+    { level: "info", text: "All contingents eat at BL Mess, Phase V, 3rd floor. Carry your mess coupon." },
     { level: "info",  text: "Free campus buses loop between PGP Auditorium, D Landing, Phase V and the Main Gate from early morning to past midnight. Use the Travel tab to find your next bus." },
-    { level: "info",  text: "Fixtures can move. Check Sportagon or the Sports tab before you head out." }
   ],
 
   /* ---------------- TEAMS ----------------
@@ -104,21 +108,21 @@ window.SITE = {
       desc: "Second floor. E1: Table tennis (men) · E2: Table tennis (women) · E3: Carrom · E4: Chess." },
     { id: "gym",      cat: "sports", mapName: "Gymnasium", name: "Student Gymnasium", lat: 11.2915, lng: 75.873824, desc: "Powerlifting. Second floor, above J Mess." },
     { id: "pq",       cat: "sports", mapName: "PQ Common Room", name: "PQ Common Room", lat: 11.2919578, lng: 75.8754765, desc: "Pool. Some pool matches may be at the AB Common Room, so check the fixture." },
-    { id: "nit",      cat: "sports", name: "NIT Calicut Cricket Ground", lat: 11.3216, lng: 75.9336, gmaps: "NIT Calicut, Kattangal, Kozhikode",
+    { id: "nit",      cat: "sports", mapName: "Cricket (NITC Ground)", name: "NIT Calicut Cricket Ground", lat: 11.3128829, lng: 75.9246194,
       desc: "Cricket. OFF CAMPUS, about 7 km away (₹250 one way / ₹500 return by auto)." },
 
     // Gates, buses & autos
-    { id: "main-gate", cat: "transport", mapName: "IIM Kozhikode Main Gate", name: "Main Gate", lat: 11.301753, lng: 75.873565,
-      desc: "Campus bus stop. Security check here, so keep your Inter-IIM ID ready. Team Namo autos wait here." },
+    { id: "main-gate", cat: "transport", mapName: "IIM Kozhikode Main Gate (Registration Point)", name: "Main Gate (Registration Point)", lat: 11.301753, lng: 75.873565,
+      desc: "Registration point and campus bus stop. Security check here, so keep your Inter-IIM ID ready. Team Namo autos wait here." },
     { id: "d-landing", cat: "transport", also: ["food"], mapName: "D landing", name: "D Landing", lat: 11.2920947, lng: 75.8736134,
       desc: "Campus bus stop, plus pickup for autos and cabs. The kiosk/cafe is open 3 pm–2:30 am." },
     { id: "phase5-stop", cat: "transport", mapName: "Bus Stop", name: "Phase V Bus Stop", lat: 11.2925577, lng: 75.8749792, desc: "Campus bus stop." },
-    { id: "pgp-audi",  cat: "transport", name: "PGP Auditorium", lat: 11.2931, lng: 75.8732, verified: false, desc: "Campus bus stop. Start and end point for most bus runs." },
+    { id: "pgp-audi",  cat: "transport", mapName: "PGP Auditorium", name: "PGP Auditorium", lat: 11.2933102, lng: 75.8732041, desc: "Campus bus stop. Start and end point for most bus runs." },
 
     // Food
-    { id: "mess", cat: "food", mapName: "H Mess", name: "H Mess", lat: 11.292589, lng: 75.872198,
-      desc: "Breakfast 8–10 am · Lunch 1–3 pm · Dinner 8–10:30 pm. Washrooms in A, B & C Blocks, and on the mess level and first floor." },
-    { id: "night-mess", cat: "food", mapName: "J Top (Silver Spoon Night Mess)", name: "Night Mess (J Top)", lat: 11.2914706, lng: 75.8737486, desc: "Night mess 10 pm–2:30 am." },
+    { id: "blmess", cat: "food", mapName: "BL Mess ( For all Contingents)", name: "BL Mess · Phase V, 3rd floor", lat: 11.2917245, lng: 75.8749824,
+      desc: "Mess for ALL contingents. Breakfast 8–10:45 am · Lunch 1–3:30 pm · Dinner 8–10 pm. Coupons are mandatory." },
+    { id: "d-cafe", cat: "food", mapName: "Cafe - D Landing", name: "Cafe · D Landing", lat: 11.292151, lng: 75.873591, desc: "Snacks and drinks, 3 pm–2:30 am." },
 
     // Stay: contingent common rooms
     { id: "cr-ab", cat: "stay", mapName: "AB Common Room", name: "A & B Common Room", lat: 11.2930145, lng: 75.8742268, desc: "Washrooms: C Hostel. Some pool matches may be played here." },
@@ -126,6 +130,8 @@ window.SITE = {
     { id: "cr-j",  cat: "stay", mapName: "J Common Room",  name: "J Common Room",     lat: 11.2916864, lng: 75.8737698, desc: "Washrooms: K1 Hostel, K2 Hostel and the J Mess building." },
     { id: "cr-eg", cat: "stay", mapName: "EG Common Room", name: "E & G Common Room", lat: 11.2925277, lng: 75.8735274, desc: "Washrooms: E Hostel and G Hostel." },
     { id: "cr-mn", cat: "stay", mapName: "MN Common Room", name: "M & N Common Room", lat: 11.2924253, lng: 75.8754009, desc: "Washrooms: Phase V building (all three floors)." },
+    { id: "men-acc", cat: "stay", mapName: "Men Accomodation, Kunnamangalam Govt. Arts & Science College", name: "Men's Accommodation · Govt. Arts & Science College", lat: 11.2912478, lng: 75.9288408,
+      gmaps: "Government Arts and Science College Kunnamangalam", desc: "About 6 km from IIMK. See Travel → Off-campus for getting to and from campus." },
 
     // Medical
     { id: "medical", cat: "medical", mapName: "Health Centre", name: "Health Centre", lat: 11.29628, lng: 75.872953, desc: "Campus medical centre. Go here first for any injury or illness." },
@@ -377,7 +383,7 @@ window.SITE = {
     { where: "NIT Calicut (off campus, ~7 km)", what: "Cricket", place: "nit" }
   ],
   washrooms: [
-    { at: "H Mess", use: "A Block, B Block & C Block · H Mess level & first floor", place: "mess" },
+    { at: "BL Mess / Phase V", use: "Phase V building (all three floors)", place: "blmess" },
     { at: "A & B Common Room", use: "C Hostel", place: "cr-ab" },
     { at: "D & F Common Room", use: "K1 Hostel, K2 Hostel & J Mess building", place: "cr-df" },
     { at: "J Common Room", use: "K1 Hostel, K2 Hostel & J Mess building", place: "cr-j" },
@@ -386,13 +392,54 @@ window.SITE = {
     { at: "Phase 5 Sports Complex", use: "Phase 5 building (all three floors)", place: "phase5" }
   ],
 
-  /* ---------------- FOOD ---------------- start/end are 24h; end past midnight is fine */
+  /* ---------------- MESS & FOOD ----------------
+     All contingents eat at BL Mess (Phase V, 3rd floor). Times 24h; menu from the
+     "Inter IIM Sports Event Menu" sheet. Use "A / B" for either-or items. */
+mess: {
+    place: "blmess",
+    name: "BL Mess",
+    where: "Phase V, 3rd floor",
+    note: "Coupons are mandatory to enter the mess. Carry your coupon and your Inter-IIM ID.",
+    meals: [
+      { id: "breakfast", label: "Breakfast", start: "08:00", end: "10:45" },
+      { id: "lunch",     label: "Lunch",     start: "13:00", end: "15:30" },
+      { id: "dinner",    label: "Dinner",    start: "20:00", end: "22:00" }
+    ],
+    menu: {
+      D1: {
+        breakfast: ["Aloo Paratha", "Semiya Upma", "Curd", "Coriander Mint Chutney", "Boiled Egg", "Chocos", "Boiled Pulses (Horse Gram)", "Banana (Robusta)", "Bread / Butter / Jam", "Tea / Coffee / Milk"],
+        lunch: ["Veg Salad", "Wheat Chapati", "Dal Makhani", "Paneer Lababdar", "Corn Pulao", "Plain Rice", "Tawa Veg", "Sambar", "Buttermilk", "Pappad", "Soya Capsicum / Egg Curry", "Dessert"],
+        dinner: ["Green Salad", "Mirchi ka Salan", "Lucknowi Paneer Dum Biryani", "Lucknowi Chicken Dum Biryani", "Onion Cucumber Raita", "Pickle", "Chapathi", "White Peas Curry", "Semiya Kheer"]
+      },
+      D2: {
+        breakfast: ["Plain Dosa", "Medu Vada", "Coconut Chutney", "Sambar", "Boiled Egg", "Cornflakes", "Big Lobia (Pulses)", "Mixed Fruit", "Bread / Butter / Jam", "Tea / Coffee / Milk"],
+        lunch: ["Veg Salad", "Wheat Chapati", "Dal Fry", "Chilli Paneer", "Chilli Chicken", "Veg Fried Rice", "Jeera Buttermilk", "Balushahi"],
+        dinner: ["Veg Salad", "Chapati / Phulka", "Bhindi Fry", "Jeera Rice", "Masala Dal", "Curd", "Fryums", "Pickle", "Kadai Chicken / Kadai Paneer", "Gulab Jamun"]
+      },
+      D3: {
+        breakfast: ["Poori", "Bhaji", "Poha", "Coconut Chutney", "Omelette", "Chocos", "Boiled Green Moong", "Banana", "Bread / Butter / Jam", "Tea / Coffee / Milk"],
+        lunch: ["Veg Salad", "Wheat Chapathi", "Honey Chilli Potato", "Rajma Masala", "Ghee Rice", "Plain Rice", "Dal Tadka", "Jeera Buttermilk", "Pappad", "Paneer Tikka Masala", "Chicken Tikka Masala", "Ice Cream"],
+        dinner: ["Veg Salad", "Chapati / Phulka", "Mix Veg Kurma", "Cluster Beans Poriyal", "Veg Pulao", "Dal Maharani", "Buttermilk", "Fryums, Pickle", "Masala Peanut Dry / Egg Curry", "Dessert"]
+      }
+    }
+  },
+  /* Other food & late-night options (not part of the contingent mess) */
   food: [
-    { meal: "Breakfast",  start: "08:00", end: "10:00", where: "mess" },
-    { meal: "Lunch",      start: "13:00", end: "15:00", where: "mess" },
-    { meal: "Dinner",     start: "20:00", end: "22:30", where: "mess" },
-    { meal: "Night mess", start: "22:00", end: "02:30", where: "night-mess" },
-    { meal: "D Landing kiosk", start: "15:00", end: "02:30", where: "d-landing" }
+    { meal: "Cafe · D Landing", start: "15:00", end: "02:30", where: "d-cafe" }
+  ],
+
+  /* ---------------- OFF-CAMPUS TRAVEL ----------------
+     For each off-campus place: travel time from campus and, optionally, official
+     transport `trips` ({ d: "D1", t: "07:00", from: "D Landing", note: "Team bus" }).
+     If a route has `sport`, the site also lists every match there with a
+     "leave campus by" time (match time − travelMin − reportMin). */
+  offsite: [
+    { id: "nit", place: "nit", title: "Cricket · NIT Calicut Ground", sport: "Cricket", km: "~8 km", travelMin: 25, reportMin: 30,
+      how: "Go together as a team. Autos and taxis from D Landing or the Main Gate: ₹250 one way / ₹500 return (Team Namo card).", trips: [] },
+    { id: "devagiri", place: "devagiri", title: "Badminton · Devagiri Sports Complex", sport: "Badminton", km: "~10 km", travelMin: 35, reportMin: 30,
+      how: "In Kozhikode city, near the Medical College (₹270 on the Team Namo card). Allow extra time in evening traffic.", trips: [] },
+    { id: "men-acc", place: "men-acc", title: "Men's Accommodation ⇄ Campus", km: "~6 km", travelMin: 20,
+      how: "Men's contingents stay at Govt. Arts & Science College, Kunnamangalam. EDIT: add the shuttle timings in `trips` below.", trips: [] }
   ],
 
   /* ---------------- EMERGENCY ---------------- */
@@ -409,7 +456,8 @@ window.SITE = {
     { q: "Where are the washrooms?", a: "Each common room has assigned washroom buildings. See Help → Washrooms, or the signboard in your common room. At H Mess, use A, B or C Block, or the mess level and first floor." },
     { q: "How do I find the venues?", a: "Follow the placards. Kho-kho and throwball are at the Main Ground by the Main Gate. For volleyball and basketball, take LEFT at the Main Gate. Phase 5 has the sports complex plus the E1–E4 classrooms (table tennis, carrom, chess)." },
     { q: "Where is cricket?", a: "At the NIT Calicut cricket ground, about 7 km from campus. By auto it's ₹250 one way or ₹500 return." },
-    { q: "Where can I eat at 1 am?", a: "The night mess is open 10 pm–2:30 am, and the D Landing kiosk is open 3 pm–2:30 am." },
+    { q: "Where do I eat?", a: "All contingents eat at BL Mess, Phase V, 3rd floor. Breakfast is 8–10:45 am, lunch 1–3:30 pm and dinner 8–10 pm. Coupons are mandatory. The Food tab has the full menu for each day." },
+    { q: "Where can I get snacks late at night?", a: "The D Landing cafe is open 3 pm–2:30 am." },
     { q: "Do I need cash?", a: "UPI works almost everywhere. Keep some cash for autos and small shops as a backup." },
     { q: "Is it going to rain?", a: "Kozhikode can still get November showers. Check the weather card on the home screen. Outdoor fixtures may shift, and Sportagon will have the latest." }
   ],
