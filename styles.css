@@ -428,3 +428,4 @@ tr.soon{background:#fff0f0}
 }
 @media(max-width:360px){.dishes{columns:1}.tabbar span{font-size:10px}}
 [hidden]{display:none!important}
+.leave-rule{margin-top:12px;padding:10px 12px;border-radius:10px;background:#fff8e1;font-size:.88rem;line-height:1.4}

@@ -1,7 +1,7 @@
 # Inter IIM '26 · Contingent Hub
 
 A mobile-first guide for the six visiting contingents. It covers:
-- the full fixture schedule, filterable by IIM and synced live from the sports committee's sheet
+- **no fixtures**: fixtures, scores and results stay on Sportagon (sponsor); the site only links to it
 - a stop-to-stop campus bus finder
 - the auto/taxi chetta list with tap-to-call and WhatsApp
 - the Team Namo fare card
@@ -12,11 +12,10 @@ It's a plain static site with no build step. Anyone on the committee can edit it
 ```
 index.html, styles.css, app.js   page + logic (rarely touched)
 data.js                          ALL CONTENT: teams, places, autos, fares, buses, food
-fixtures.js                      bundled fixtures (fallback if the live sheet can't be read)
 assets/                          IIM logos, Inter-IIM emblem, Sports Committee crest (source images)
 assets.js                        the same logos embedded in code, so they always display
 mymap-data.js                    snapshot of the IIMK Google My Map + its icons
-api/                             Vercel functions: mymap (Google map), schedule (fixtures sheet), weather. Each is cached so 1000+ users never overload Google or the weather service
+api/                             Vercel functions: mymap (Google map) and weather. Each is cached so 1000+ users never overload Google or the weather service
 tools/export-mymaps.js           regenerates the import file from data.js
 ```
 
@@ -39,7 +38,6 @@ From then on, every commit to GitHub redeploys automatically in about 30 seconds
 | Mess timings or menu | `mess.meals` (times) and `mess.menu.D1/D2/D3` (dishes; write `A / B` for either-or) |
 | Men's accommodation shuttle / any official off-campus transport | `offsite[].trips`, e.g. `{ d: "D1", t: "07:00", from: "D Landing", note: "Team bus" }` |
 | Travel time to NIT / Devagiri, or how early teams should arrive | `offsite[].travelMin`, `offsite[].reportMin` |
-| Bring back the fixtures tab | `config.showFixtures: true` |
 | Map layer order / layers that start hidden | `config.mapLayerOrder`, `config.mapLayersOff` |
 
 ## 2. Still to fill in (search `data.js` for EDIT)
@@ -62,19 +60,6 @@ The Map tab draws the **IIMK Google My Map** with its own layers, icons and desc
 - **Linking sports to pins:** venue links (e.g. Football → "Football Ground") use the `mapName` field in `data.js`. If you rename a pin in My Maps, update its `mapName` too.
 - **Pin icons:** pins use the icons exported in the snapshot. A brand-new icon type added later shows as a coloured pin until the snapshot is refreshed.
 
-## 4. Live fixtures from the schedule sheet
-
-`config.scheduleSheet.id` points at the **"Inter IIM 26 - Schedule"** Google Sheet. The site reads the tabs *Day 1 - 13th*, *Day 2 - 14th* and *Day 3 - 15th* whenever someone opens it. If the sports committee edits a slot or writes the teams into a semi-final cell (e.g. `B VS K`), everyone sees it on the next page load.
-
-For this to keep working:
-- The sheet must stay **Anyone with the link → Viewer**.
-- Keep the layout: row 1 holds the times, column A the sports, and each cell is `X VS Y` using the team letters (B V T I N M K) or a stage name (SEMIS 1, FINALS, …).
-- If the sheet can't be read, the site uses the last copy it saved, then `fixtures.js`. The Sports tab says which one it's showing.
-
-⚠️ That same sheet has the **Sports Committee** and **Captains List** tabs with personal phone numbers, and "anyone with the link" can read them. Move those tabs to a separate private sheet before you share the site.
-
----
-
 ## 5. Optional: other live lists
 
 Publish a Google Sheet tab as CSV (**File → Share → Publish to web → CSV**) and paste the link into `config.liveSheets`:
@@ -89,7 +74,7 @@ Publish a Google Sheet tab as CSV (**File → Share → Publish to web → CSV**
 ---
 
 ## Notes
-- Times from 00:00 to 03:59 count as late night of the same event day, for both buses and fixtures.
+- Times from 00:00 to 03:59 count as late night of the same event day, for the campus buses.
 - Offline: after one visit, everything except the map tiles and weather works without signal.
 - "Your IIM" is stored only on each phone. There's no login and no data is collected.
 - Colours are set at the top of `styles.css` (`--accent` is the Inter-IIM gold).

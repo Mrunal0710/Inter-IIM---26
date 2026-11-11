@@ -5,8 +5,8 @@
    Times are 24h "HH:MM" in IST. Anything from 00:00 to 03:59 counts as
    late night of the SAME event day (e.g. a 00:10 bus on Day 1 runs after
    the 23:10 one).
-   Fixtures live in fixtures.js, and also sync live from the schedule
-   Google Sheet (see config.scheduleSheet).
+   Fixtures and results are NOT on this site. They live on Sportagon
+   (config.sportagonUrl).
    ===================================================================== */
 
 window.SITE = {
@@ -29,20 +29,6 @@ window.SITE = {
     mapCenter: [11.2943, 75.8736],      // IIM Kozhikode campus centre (verified)
     mapZoom: 17,
 
-    /* LIVE FIXTURES from the sports committee's schedule sheet.
-       The sheet must be shared as "Anyone with the link → Viewer".
-       If it can't be read, or its layout changes, the site falls back
-       to fixtures.js. Set id to "" to turn live sync off. */
-    showFixtures: false,               // true = show the Sports/fixtures tab again (fixtures are still used for off-campus travel times)
-    /* Map layer priority (top first) and layers that start switched off. Matched against your
-       My Maps layer names (case-insensitive, partial match). */
-    mapLayerOrder: ["sports venue", "common room", "utility", "food", "event point", "gates", "health", "academic", "hostel", "outside"],
-    mapLayersOff: ["academic", "hostel", "outside"],
-    scheduleSheet: {
-      id: "1M5e54Ff0bAhkAeLbHIN5E2FSLR3fO5UtF8BzWR8HvCI",
-      tabs: { D1: "Day 1 - 13th", D2: "Day 2 - 14th", D3: "Day 3 - 15th" }
-    },
-
     /* OPTIONAL: other live lists from published Google Sheet CSVs (README §4). */
     liveSheets: { announcements: "", autos: "", buses: "" }
   },
@@ -56,13 +42,12 @@ window.SITE = {
 
   /* ---------------- ANNOUNCEMENTS ---------------- level: "info" | "alert" */
   announcements: [
-    { level: "alert", text: "Cricket (NIT Calicut ground) and badminton (Devagiri Sports Complex) are OFF CAMPUS. Travel → Off-campus shows when to leave for every match." },
+    { level: "alert", text: "Cricket (NIT Calicut ground) and badminton (Devagiri Sports Complex) are OFF CAMPUS. Travel → Off-campus shows how to get there and how early to leave." },
     { level: "info", text: "All contingents eat at BL Mess, Phase V, 3rd floor. Carry your mess coupon." },
     { level: "info",  text: "Free campus buses loop between PGP Auditorium, D Landing, Phase V and the Main Gate from early morning to past midnight. Use the Travel tab to find your next bus." },
   ],
 
   /* ---------------- TEAMS ----------------
-     letter = the code used in the fixture sheet ("B VS K").
      visiting: true for the six visiting contingents.
      hostel: the common room this IIM stays in: "cr-ab", "cr-df", "cr-j", "cr-eg" or "cr-mn".
      EDIT once allocations are final. */
@@ -107,7 +92,7 @@ window.SITE = {
     { id: "eblock",   cat: "sports", mapName: "E1, E2, E3, E4 Classroom", name: "E1–E4 Classrooms (Phase V)", lat: 11.2924448, lng: 75.8748743,
       desc: "Second floor. E1: Table tennis (men) · E2: Table tennis (women) · E3: Carrom · E4: Chess." },
     { id: "gym",      cat: "sports", mapName: "Gymnasium", name: "Student Gymnasium", lat: 11.2915, lng: 75.873824, desc: "Powerlifting. Second floor, above J Mess." },
-    { id: "pq",       cat: "sports", mapName: "PQ Common Room", name: "PQ Common Room", lat: 11.2919578, lng: 75.8754765, desc: "Pool. Some pool matches may be at the AB Common Room, so check the fixture." },
+    { id: "pq",       cat: "sports", mapName: "PQ Common Room", name: "PQ Common Room", lat: 11.2919578, lng: 75.8754765, desc: "Pool. Some pool matches may be at the AB Common Room, so check Sportagon." },
     { id: "nit",      cat: "sports", mapName: "Cricket (NITC Ground)", name: "NIT Calicut Cricket Ground", lat: 11.3128829, lng: 75.9246194,
       desc: "Cricket. OFF CAMPUS, about 7 km away (₹250 one way / ₹500 return by auto)." },
 
@@ -155,7 +140,7 @@ window.SITE = {
   ],
 
   /* ---------------- SPORT → VENUE ----------------
-     Keys match the sport names in the fixture sheet (without "(M)/(W)/(Mixed)"),
+     Keys are sport names (without "(M)/(W)/(Mixed)"),
      unless a full name is given. */
   venues: {
     "Badminton": "devagiri", "Basketball": "bball", "Carrom": "eblock", "Chess": "eblock",
@@ -429,14 +414,12 @@ mess: {
   ],
 
   /* ---------------- OFF-CAMPUS TRAVEL ----------------
-     For each off-campus place: travel time from campus and, optionally, official
-     transport `trips` ({ d: "D1", t: "07:00", from: "D Landing", note: "Team bus" }).
-     If a route has `sport`, the site also lists every match there with a
-     "leave campus by" time (match time − travelMin − reportMin). */
+     For each off-campus place: travel time from campus, how early to report (reportMin),
+     and optional official transport `trips` ({ d: "D1", t: "07:00", from: "D Landing", note: "Team bus" }). */
   offsite: [
-    { id: "nit", place: "nit", title: "Cricket · NIT Calicut Ground", sport: "Cricket", km: "~8 km", travelMin: 25, reportMin: 30,
+    { id: "nit", place: "nit", title: "Cricket · NIT Calicut Ground", km: "~8 km", travelMin: 25, reportMin: 30,
       how: "Go together as a team. Autos and taxis from D Landing or the Main Gate: ₹250 one way / ₹500 return (Team Namo card).", trips: [] },
-    { id: "devagiri", place: "devagiri", title: "Badminton · Devagiri Sports Complex", sport: "Badminton", km: "~10 km", travelMin: 35, reportMin: 30,
+    { id: "devagiri", place: "devagiri", title: "Badminton · Devagiri Sports Complex", km: "~10 km", travelMin: 35, reportMin: 30,
       how: "In Kozhikode city, near the Medical College (₹270 on the Team Namo card). Allow extra time in evening traffic.", trips: [] },
     { id: "men-acc", place: "men-acc", title: "Men's Accommodation ⇄ Campus", km: "~6 km", travelMin: 20,
       how: "Men's contingents stay at Govt. Arts & Science College, Kunnamangalam. EDIT: add the shuttle timings in `trips` below.", trips: [] }
@@ -451,7 +434,7 @@ mess: {
 
   /* ---------------- FAQ ---------------- */
   faqs: [
-    { q: "Where can I find fixtures and results?", a: "The Sports tab has the full three-day schedule, filtered to your IIM if you pick it at the top. Live scores and results are on Sportagon." },
+    { q: "Where can I find fixtures and results?", a: "Fixtures, live scores and results are all on Sportagon, the official fixtures platform. Use the Sportagon button on the home screen." },
     { q: "How do I get around campus?", a: "Free buses link PGP Auditorium, D Landing, Phase V and the Main Gate all day. Open Travel → Campus bus, choose where you are and where you're going, and it shows the next buses." },
     { q: "Where are the washrooms?", a: "Each common room has assigned washroom buildings. See Help → Washrooms, or the signboard in your common room. At H Mess, use A, B or C Block, or the mess level and first floor." },
     { q: "How do I find the venues?", a: "Follow the placards. Kho-kho and throwball are at the Main Ground by the Main Gate. For volleyball and basketball, take LEFT at the Main Gate. Phase 5 has the sports complex plus the E1–E4 classrooms (table tennis, carrom, chess)." },
