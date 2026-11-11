@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Inter IIM '26 · Campus map</name>
+<Folder><name>🏟️ Sports venues</name>
+<Placemark><name>Phase V Sports Complex</name><description>Football, Futsal, Frisbee, Hockey, Kabaddi, Squash, Tennis, Swimming — Squash, swimming, tennis, kabaddi, frisbee, futsal, football and hockey. Also a campus bus stop. Washrooms on all three floors of the Phase 5 building.</description><Point><coordinates>75.8762,11.2972,0</coordinates></Point></Placemark>
+<Placemark><name>Devagiri Sports Complex</name><description>Badminton — Badminton.</description><Point><coordinates>75.8729,11.2958,0</coordinates></Point></Placemark>
+<Placemark><name>Volleyball &amp; Basketball Courts</name><description>Basketball, Volleyball — Take LEFT at the Main Gate. Volleyball and basketball (men &amp; women).</description><Point><coordinates>75.8698,11.2921,0</coordinates></Point></Placemark>
+<Placemark><name>Main Ground (Kho-Kho &amp; Throwball)</name><description>Kho-Kho, Throwball — At the Main Gate. Kho-kho and throwball.</description><Point><coordinates>75.8719,11.2917,0</coordinates></Point></Placemark>
+<Placemark><name>Phase 5 Classrooms (E1–E4)</name><description>Carrom, Chess, Table Tennis — Use the Phase 5 classroom entrance. E1: Table tennis (men) · E2: Table tennis (women) · E3: Carrom · E4: Chess.</description><Point><coordinates>75.8769,11.2967,0</coordinates></Point></Placemark>
+<Placemark><name>PQ Common Room</name><description>Pool — Pool (men &amp; women).</description><Point><coordinates>75.8748,11.2948,0</coordinates></Point></Placemark>
+<Placemark><name>Student Gymnasium</name><description>Powerlifting — Powerlifting, including weigh-ins.</description><Point><coordinates>75.8722,11.2962,0</coordinates></Point></Placemark>
+<Placemark><name>NIT Calicut Cricket Ground</name><description>Cricket — Cricket. OFF CAMPUS, about 7 km away (₹250 one way / ₹500 return by auto per the Team Namo card).</description><Point><coordinates>75.9336,11.3216,0</coordinates></Point></Placemark>
+</Folder>
+<Folder><name>🚌 Bus stops &amp; autos</name>
+<Placemark><name>Main Gate · Bus Stop &amp; Auto Stand</name><description>Campus bus stop. Team Namo autos and taxis wait here. Gate to hostel is ₹70 by auto.</description><Point><coordinates>75.8704,11.2913,0</coordinates></Point></Placemark>
+<Placemark><name>D Landing · Bus Stop &amp; Kiosk</name><description>Campus bus stop. The kiosk is open from 3 pm to 2:30 am.</description><Point><coordinates>75.8742,11.2942,0</coordinates></Point></Placemark>
+<Placemark><name>PGP Auditorium · Bus Stop</name><description>Start and end point for most campus bus runs.</description><Point><coordinates>75.8737,11.2931,0</coordinates></Point></Placemark>
+<Placemark><name>Kunnamangalam (KGM) Bus Stand</name><description>About 2.7 km from campus. KGM to hostel is ₹80 by auto. City buses run to Kozhikode all day.</description><Point><coordinates>75.8781,11.305,0</coordinates></Point></Placemark>
+<Placemark><name>Kozhikode Railway Station</name><description>About 16–18 km. ₹450 one way / ₹800 return by auto or taxi.</description><Point><coordinates>75.7807,11.2468,0</coordinates></Point></Placemark>
+<Placemark><name>Calicut International Airport (CCJ)</name><description>About 35 km. Drop or pickup ₹900. Waiting and coming back ₹1,200.</description><Point><coordinates>75.9512,11.1369,0</coordinates></Point></Placemark>
+</Folder>
+<Folder><name>🍛 Food</name>
+<Placemark><name>H Mess</name><description>Breakfast 8–10 am · Lunch 1–3 pm · Dinner 8–10:30 pm · Night mess 10 pm–2:30 am. Washrooms on the mess level and first floor.</description><Point><coordinates>75.8739,11.2967,0</coordinates></Point></Placemark>
+</Folder>
+<Folder><name>🛏️ Stay</name>
+<Placemark><name>A &amp; B Common Room</name><description>Washrooms: C Hostel.</description><Point><coordinates>75.8712,11.2978,0</coordinates></Point></Placemark>
+<Placemark><name>D &amp; F Common Room</name><description>Washrooms: K1 Hostel, K2 Hostel and the J Mess building.</description><Point><coordinates>75.8724,11.2984,0</coordinates></Point></Placemark>
+<Placemark><name>J Common Room</name><description>Washrooms: K1 Hostel, K2 Hostel and the J Mess building.</description><Point><coordinates>75.8736,11.2988,0</coordinates></Point></Placemark>
+<Placemark><name>E &amp; G Common Room</name><description>Washrooms: E Hostel and G Hostel.</description><Point><coordinates>75.8748,11.2981,0</coordinates></Point></Placemark>
+<Placemark><name>M &amp; N Common Room</name><description>Washrooms: Phase 5 building (all three floors).</description><Point><coordinates>75.876,11.2976,0</coordinates></Point></Placemark>
+</Folder>
+<Folder><name>🩺 Medical</name>
+<Placemark><name>Campus Medical Centre</name><description>First aid on campus.</description><Point><coordinates>75.8716,11.2925,0</coordinates></Point></Placemark>
+<Placemark><name>Govt. Medical College Hospital</name><description>Nearest major hospital, about 9 km away. ₹270 by auto.</description><Point><coordinates>75.8373,11.2716,0</coordinates></Point></Placemark>
+</Folder>
+<Folder><name>🌴 Around Kozhikode</name>
+<Placemark><name>Kozhikode Beach</name><description>Sunset and street food. ₹450 / ₹800 return.</description><Point><coordinates>75.7712,11.2588,0</coordinates></Point></Placemark>
+<Placemark><name>Kappad Beach</name><description>Where Vasco da Gama landed. ₹900 / ₹1,200 return.</description><Point><coordinates>75.719,11.383,0</coordinates></Point></Placemark>
+<Placemark><name>Beypore Beach</name><description>Long breakwater walk. ₹750 / ₹1,100 return.</description><Point><coordinates>75.804,11.1597,0</coordinates></Point></Placemark>
+<Placemark><name>Thusharagiri Waterfalls</name><description>Half-day trip. ₹950 / ₹1,400 return.</description><Point><coordinates>76.053,11.472,0</coordinates></Point></Placemark>
+<Placemark><name>HiLITE Mall</name><description>Malls, food court and movies. ₹350 / ₹700 return.</description><Point><coordinates>75.834,11.2482,0</coordinates></Point></Placemark>
+</Folder>
+</Document></kml>

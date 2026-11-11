@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Inter IIM '26 · Contingent Hub</title>
+  <meta name="description" content="Maps, fixtures, autos, shuttles and help for contingents at Inter IIM '26, hosted by IIM Kozhikode." />
+  <meta name="theme-color" content="#0e0e0e" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icon-192.png" type="image/png" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="Home">
+      <img id="brandImg" class="brand-mark" src="assets/emblem.png" alt="" width="34" height="38" />
+      <span class="brand-text"><b id="evName">Inter IIM '26</b><small id="evTag">Contingent Hub</small></span>
+    </a>
+    <span id="phase" class="phase"></span>
+    <button id="contBtn" class="cont-btn" type="button" aria-label="Choose your contingent">Your IIM ▾</button>
+  </header>
+
+  <main id="app">
+    <section id="view-home" class="view" aria-label="Home"></section>
+    <section id="view-map" class="view" aria-label="Map">
+      <div class="map-shell">
+        <div class="map-tools">
+          <div class="search"><input id="mapSearch" type="search" placeholder="Search venues, sports, food…" autocomplete="off" /></div>
+          <div id="mapChips" class="chips scroll-x"></div>
+          <p id="mapHint" class="map-hint"></p>
+        </div>
+        <div class="map-wrap">
+          <div id="leaflet"></div>
+          <div id="gframe" class="gframe" hidden></div>
+          <div class="map-fabs">
+            <button id="btnLocate" type="button" title="Show my location">◎</button>
+            <button id="btnCampus" type="button" title="Zoom to campus">Campus</button>
+            <button id="btnFit" type="button" title="Fit all visible places">Fit</button>
+          </div>
+          <div class="map-fabs right">
+            <button id="btnBase" type="button">🗺 Street</button>
+            <button id="btnView" type="button" hidden>Google view</button>
+          </div>
+          <div id="legend" class="legend"></div>
+        </div>
+        <ul id="placeList" class="place-list"></ul>
+      </div>
+    </section>
+    <section id="view-sports" class="view" aria-label="Sports"></section>
+    <section id="view-transport" class="view" aria-label="Transport"></section>
+    <section id="view-help" class="view" aria-label="Help"></section>
+  </main>
+
+  <nav class="tabbar" aria-label="Main">
+    <a href="#home" data-tab="home"><i>⌂</i><span>Home</span></a>
+    <a href="#map" data-tab="map"><i>◉</i><span>Map</span></a>
+    <a href="#sports" data-tab="sports"><i>🏆</i><span>Sports</span></a>
+    <a href="#transport" data-tab="transport"><i>🚌</i><span>Travel</span></a>
+    <a href="#help" data-tab="help" class="sos-tab"><i>✚</i><span>Help</span></a>
+  </nav>
+
+  <dialog id="contDialog" class="sheet">
+    <form method="dialog">
+      <h3>Which contingent are you with?</h3>
+      <p class="muted">We'll put your team's matches first. This is saved only on this phone.</p>
+      <div id="contList" class="cont-list"></div>
+      <button class="btn ghost full" value="close">Close</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="assets.js"></script>
+  <script src="data.js"></script>
+  <script src="fixtures.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
