@@ -1,6 +1,6 @@
 /* Network-first for this site's own files (so data edits show up straight away),
    with a cached copy as the offline fallback. Bump VERSION if you change the file list. */
-const VERSION = "interiim26-v9";
+const VERSION = "interiim26-v10";
 const SHELL = ["/", "/index.html", "/styles.css", "/app.js", "/data.js", "/assets.js", "/mymap-data.js", "/manifest.webmanifest",
   "/assets/emblem.png", "/assets/sports-crest.png", "/assets/icon-192.png",
   "/assets/iimb.png", "/assets/iimv.png", "/assets/iimt.png", "/assets/iimi.png", "/assets/iimn.png", "/assets/iimm.png", "/assets/iimk.png"];

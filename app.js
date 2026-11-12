@@ -181,12 +181,13 @@
 
     $("#view-home").innerHTML = `
       <div class="hero"><img class="hero-emblem" src="${EMBLEM}" alt=""><div class="kicker">Hosted by ${esc(C.host)}</div><h1>${esc(C.eventName)}</h1>
-        <p><b>${range}</b><br>Venues, mess, buses and autos, all in one place.</p>${countdown}</div>
+        <p><b>${range}</b><br>Venues, mess, buses and autos, all in one place.</p>${countdown}
+        ${C.sportagonUrl ? `<a class="hero-cta" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener">🏆 Fixtures & live scores on ${esc(C.sportagonName)} ↗</a>` : ""}</div>
       ${notes ? `<div class="section notes">${notes}</div>` : ""}
 
       <div class="section"><div class="section-head"><h2>🏟️ Sports venues</h2><a href="#map/only-sports">All on map →</a></div>
         <div class="card vlist">${venues}</div>
-        <a class="btn ghost full" style="margin-top:10px" href="#transport/offsite">🚌 Off-campus venues: when to leave</a></div>
+        <a class="btn ghost full" style="margin-top:10px" href="#transport/shuttle">🚐 Shuttle to cricket, badminton & boys' accommodation</a></div>
 
       <div class="section"><div class="section-head"><h2>🛋️ Common rooms</h2><a href="#map/only-common">On map →</a></div>
         <div class="card vlist">${rooms}</div></div>
@@ -198,6 +199,7 @@
         <a class="card mess-card" href="#food"><div class="mc-top"><div><b>${esc(S.mess.name)}</b><span>${esc(S.mess.where)} · for all contingents</span></div>${chev}</div>
         <div class="mc-status">${messLine}</div><div class="small muted">🎟️ ${esc(S.mess.note)}</div></a></div>
 
+      ${homeShuttleHTML()}
       <div class="section quick">
         ${C.sportagonUrl ? `<a class="qa primary" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener"><i>🏆</i>Sportagon</a>` : `<span class="qa primary" aria-disabled="true"><i>🏆</i>Sportagon</span>`}
         <a class="qa dark" href="#map"><i>🗺️</i>Map</a>
@@ -205,7 +207,7 @@
         <a class="qa" href="#transport/autos"><i>🛺</i>Autos</a>
         <a class="qa" href="#transport/fares"><i>₹</i>Fares</a>
         <a class="qa" href="#food"><i>🍛</i>Menu</a>
-        <a class="qa" href="#help/wayfinding"><i>🧭</i>Directions</a>
+        <a class="qa" href="#transport/shuttle"><i>🚐</i>Shuttle</a>
         <a class="qa sos" href="#help"><i>🚨</i>SOS</a>
       </div>
       ${busHTML}
@@ -215,6 +217,7 @@
       </div>
       <div class="foot"><img src="${CREST}" alt="IIM Kozhikode Sports Committee" width="110"><p>Made by the IIM Kozhikode Sports Committee. Add this page to your home screen.</p></div>`;
     $$("#view-home [data-stop]").forEach(b => b.onclick = () => { homeBusStop = b.dataset.stop; store.set("busFrom", homeBusStop); renderHome(); });
+    $$("#view-home [data-shhome]").forEach(b => b.onclick = () => { store.set("shHome", b.dataset.shhome); renderHome(); });
     fillWeather();
   }
   /* =================================================================== FOOD (BL Mess) */
@@ -513,7 +516,7 @@
   let bFrom = store.get("busFrom") || "Main Gate", bTo = store.get("busTo") || "PGP Auditorium", bDay = null, bAll = false;
   function renderTransport() {
     const v = $("#view-transport");
-    v.innerHTML = `<div class="seg seg4">${[["bus", "🚌", "Campus bus"], ["offsite", "🏏", "Off-campus"], ["autos", "🛺", "Autos"], ["fares", "₹", "Fares"]]
+    v.innerHTML = `<div class="seg seg4">${[["bus", "🚌", "Campus bus"], ["offsite", "🚐", "Shuttle"], ["autos", "🛺", "Autos"], ["fares", "₹", "Fares"]]
       .map(([k, e, l]) => `<button class="${tTab === k ? "on" : ""}" data-t="${k}"><span>${e}</span>${l}</button>`).join("")}</div><div id="tBody"></div>`;
     $$("#view-transport .seg button").forEach(b => b.onclick = () => { tTab = b.dataset.t; history.replaceState(null, "", `#transport/${tTab}`); renderTransport(); });
     ({ bus: renderBus, offsite: renderOffsite, autos: renderAutos, fares: renderFares })[tTab]();
@@ -573,30 +576,81 @@
         ${items.map(i => `<tr><td>${esc(i.to)}</td><td class="r"><b>${rs(i.drop)}</b></td><td class="r muted">${rs(i.ret)}</td></tr>`).join("")}</tbody></table></div></div>`; }).join("") || `<div class="empty-note">No match. Ask a chettan for the fare.</div>`}`;
     const inp = $("#fSearch"); inp.oninput = () => { fQuery = inp.value; const pos = inp.selectionStart; renderFares(); const n = $("#fSearch"); n.focus(); n.setSelectionRange(pos, pos); };
   }
-  let oDay = null;
-  const hmOf = m => { m = ((m % 1440) + 1440) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+  /* ---------- outside-campus shuttle ---------- */
+  const SH = S.shuttle || { route: [], trips: [], stopPlace: {} };
+  const SH_STOPS = [...new Set(SH.route)];
+  let shFrom = store.get("shFrom") || SH_STOPS[0], shTo = store.get("shTo") || "IIM Kozhikode", oDay = null, shAll = false;
+  if (!SH_STOPS.includes(shFrom)) shFrom = SH_STOPS[0]; if (!SH_STOPS.includes(shTo)) shTo = SH_STOPS[2];
+  const isFull = t => t.t[1] != null;
+  function shuttleOptions(dayKey, a, b) {
+    const out = [];
+    SH.trips.filter(t => t.d === dayKey).forEach(t => {
+      const byArr = {};
+      for (let i = 0; i < SH.route.length; i++) {
+        if (SH.route[i] !== a || !t.t[i]) continue;
+        for (let j = i + 1; j < SH.route.length; j++) if (SH.route[j] === b && t.t[j]) { byArr[j] = { trip: t, i, j, dep: t.t[i], arr: t.t[j] }; break; }
+      }
+      out.push(...Object.values(byArr));   // keeps the latest boarding point for each arrival
+    });
+    return out.sort((x, y) => ev(x.dep) - ev(y.dep));
+  }
+  function shuttleLine(t, from = 0, hiA, hiB) {
+    return SH.route.map((s, k) => ({ s, k, tm: t.t[k] })).filter(x => x.tm && x.k >= from)
+      .map(x => `<span class="${x.k === hiA || x.k === hiB ? "hl" : ""}">${esc(s(x.s))} ${fmt12(x.tm).replace(" AM", "a").replace(" PM", "p")}</span>`).join("<i>→</i>");
+    function s(n) { return n.replace("Boys' Accommodation", "Accomm.").replace(" (NIT)", "").replace(" (Devagiri)", "").replace("IIM Kozhikode", "IIMK"); }
+  }
   function renderOffsite() {
     if (!oDay) oDay = (firstUpcomingDay() || S.days[0]).key;
     const live = isToday(oDay), n = now().min;
-    const cards = S.offsite.map(r => {
-      const p = placeById(r.place);
-      const trips = (r.trips || []).filter(t => t.d === oDay).sort((a, b) => ev(a.t) - ev(b.t));
-      return `<div class="card off-card"><div class="off-h"><div><h3>${esc(r.title)}</h3><p>${esc(r.km)} · about ${r.travelMin} min from campus</p></div></div>
+    const opts = sel => SH_STOPS.map(s => `<option ${s === sel ? "selected" : ""}>${esc(s)}</option>`).join("");
+    const all = shuttleOptions(oDay, shFrom, shTo);
+    const upcoming = live ? all.filter(o => ev(o.dep) >= n) : all, past = live ? all.filter(o => ev(o.dep) < n) : [];
+    const row = (o, k) => { const mins = ev(o.dep) - n, last = o.trip.last && isFull(o.trip);
+      return `<div class="sh-row ${k === 0 && live ? "next" : ""}"><div class="bt"><b>${fmt12(o.dep)}</b>${live && mins >= 0 ? `<small>${fmtIn(mins)}</small>` : ""}</div>
+        <div><div class="sh-arr">→ ${esc(shTo)} ~<b>${fmt12(o.arr)}</b> <span class="tag ${isFull(o.trip) ? "" : "gold"}">${isFull(o.trip) ? "Full loop" : "Short loop"}</span></div>
+        <div class="route-line">${shuttleLine(o.trip, o.i, o.i, o.j)}</div>
+        ${last ? `<div class="last-note">⭐ ${esc(SH.lastNote)}</div>` : ""}</div></div>`; };
+    const dayTrips = SH.trips.filter(t => t.d === oDay).sort((a, b) => ev(a.t[0]) - ev(b.t[0]));
+    const cards = S.offsite.map(r => { const p = placeById(r.place);
+      return `<div class="card off-card"><h3>${esc(r.title)}</h3><p class="off-meta">${esc(r.km)} from campus</p>
         <p class="small" style="margin:8px 0 10px">${esc(r.how)}</p>
-        <div class="row two">${p ? `<a class="btn sm full" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a><a class="btn sm ghost full" href="#map/${esc(p.id)}">On map</a>` : ""}</div>
-        ${trips.length ? `<h4 class="off-sub">🚌 Official transport</h4><table><tbody>${trips.map(t => `<tr class="${live && ev(t.t) < n ? "past-r" : ""}"><td><b>${fmt12(t.t)}</b></td><td>${esc(t.from || "")}${t.note ? `<div class="small muted">${esc(t.note)}</div>` : ""}</td></tr>`).join("")}</tbody></table>` : ""}
-        ${r.reportMin ? `<div class="leave-rule">⏱ Leave campus at least <b>${r.travelMin + r.reportMin} min</b> before your match time on ${esc(C.sportagonName)} (${r.travelMin} min travel + ${r.reportMin} min to report).</div>` : ""}
-        ${!trips.length && !r.reportMin ? `<p class="small muted" style="margin:10px 0 0">Shuttle timings will be posted here.</p>` : ""}
-      </div>`; }).join("");
+        <div class="row two">${r.shuttleStop ? `<button class="btn sm full" data-shto="${esc(r.shuttleStop)}">🚐 Shuttles here</button>` : ""}${p ? `<a class="btn sm ghost full" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a>` : ""}</div>
+        ${r.reportMin ? `<div class="leave-rule">⏱ Take a shuttle that gets you there at least <b>${r.reportMin} min</b> before your match. Match times are on ${C.sportagonUrl ? `<a href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener">${esc(C.sportagonName)}</a>` : esc(C.sportagonName)}.</div>` : ""}</div>`; }).join("");
     const hubs = S.places.filter(p => ["rly", "airport", "kgm"].includes(p.id));
     $("#tBody").innerHTML = `
-      <div class="chips scroll-x" style="margin-bottom:12px">${S.days.map(d => `<button class="chip ${oDay === d.key ? "on" : ""}" data-o="${d.key}">${esc(d.label)} · ${fmtDate(d.date)}${isToday(d.key) ? " · today" : ""}</button>`).join("")}</div>
-      <div class="list">${cards}</div>
-      ${C.sportagonUrl ? `<a class="btn accent full" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener">Check your match time on ${esc(C.sportagonName)} ↗</a>` : ""}
+      <div class="card bus-finder"><div class="sh-title">🚐 Outside-campus shuttle <span>free</span></div>
+        <div class="bf-row"><label>From<select id="shFrom">${opts(shFrom)}</select></label>
+        <button class="swap" id="shSwap" title="Swap" aria-label="Swap">⇅</button><label>To<select id="shTo">${opts(shTo)}</select></label></div></div>
+      <div class="chips scroll-x" style="margin:12px 0">${S.days.map(d => `<button class="chip ${oDay === d.key ? "on" : ""}" data-o="${d.key}">${esc(d.label)} · ${fmtDate(d.date)}${isToday(d.key) ? " · today" : ""}</button>`).join("")}</div>
+      ${shFrom === shTo ? `<div class="empty-note">Choose two different stops.</div>` : `
+      <div class="card list">${upcoming.length ? upcoming.map(row).join("") : `<p class="muted small" style="margin:0">${live ? "No more shuttles on this route today." : "No shuttles on this route that day."} Autos: see the Fares tab.</p>`}</div>
+      ${past.length ? `<details class="past-d"><summary>${past.length} earlier shuttle${past.length === 1 ? "" : "s"} today</summary><div class="card list" style="margin-top:8px">${past.map(row).join("")}</div></details>` : ""}`}
+      <p class="small muted" style="margin:8px 2px 0">${esc(SH.note)}</p>
+      <div class="section"><button class="btn ghost full" id="shAllBtn">${shAll ? "Hide" : "Show"} full ${esc(dayByKey(oDay).label)} shuttle timetable (${dayTrips.length} trips)</button>
+        ${shAll ? `<div class="card list" style="margin-top:10px">${dayTrips.map(t => `<div class="sh-full"><b>${fmt12(t.t[0])}</b> <span class="tag ${isFull(t) ? "" : "gold"}">${isFull(t) ? "Full" : "Short"}</span>${t.last ? " ⭐" : ""}<div class="route-line">${shuttleLine(t)}</div></div>`).join("")}</div>` : ""}</div>
+      <div class="section"><div class="section-head"><h2>Off-campus venues & stay</h2></div><div class="list">${cards}</div></div>
       <div class="section"><div class="section-head"><h2>Getting around Kozhikode</h2></div><div class="list">
         ${S.publicTransport.map(t => `<div class="card"><h4 style="margin:0 0 4px;font-weight:850">${esc(t.title)}</h4><p style="margin:0" class="small">${esc(t.text)}</p></div>`).join("")}
         ${hubs.map(p => `<div class="card"><h4 style="margin:0 0 4px;font-weight:850">${esc(p.name)}</h4><p class="small" style="margin:0 0 8px">${esc(p.desc || "")}</p><a class="btn sm" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions ↗</a></div>`).join("")}</div></div>`;
+    const save = () => { store.set("shFrom", shFrom); store.set("shTo", shTo); };
+    $("#shFrom").onchange = e => { shFrom = e.target.value; save(); renderOffsite(); };
+    $("#shTo").onchange = e => { shTo = e.target.value; save(); renderOffsite(); };
+    $("#shSwap").onclick = () => { [shFrom, shTo] = [shTo, shFrom]; save(); renderOffsite(); };
+    $("#shAllBtn").onclick = () => { shAll = !shAll; renderOffsite(); };
     $$("#tBody [data-o]").forEach(b => b.onclick = () => { oDay = b.dataset.o; renderOffsite(); });
+    $$("#tBody [data-shto]").forEach(b => b.onclick = () => { shTo = b.dataset.shto; if (shFrom === shTo) shFrom = "IIM Kozhikode"; save(); renderOffsite(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  }
+  function homeShuttleHTML() {
+    const day = firstUpcomingDay(); if (!day || !SH.trips.length) return "";
+    const live = isToday(day.key), n = now().min, from = store.get("shHome") || "Boys' Accommodation";
+    const list = [];
+    SH.trips.filter(t => t.d === day.key).forEach(t => { for (let i = 0; i < SH.route.length - 1; i++) if (SH.route[i] === from && t.t[i] && (!live || ev(t.t[i]) >= n)) { list.push({ t, i }); } });
+    list.sort((a, b) => ev(a.t.t[a.i]) - ev(b.t.t[b.i]));
+    const rows = list.slice(0, 3).map(({ t, i }) => `<div class="bus-row"><div class="bt"><b>${fmt12(t.t[i])}</b><small>${live ? fmtIn(ev(t.t[i]) - n) : esc(day.label)}</small></div>
+      <div class="route-line">${shuttleLine(t, i, i)}</div></div>`).join("");
+    return `<div class="section"><div class="section-head"><h2>🚐 Shuttle (outside campus)</h2><a href="#transport/shuttle">Shuttle finder →</a></div>
+      <div class="chips scroll-x" style="margin-bottom:10px">${SH_STOPS.map(s => `<button class="chip ${s === from ? "on" : ""}" data-shhome="${esc(s)}">From ${esc(s)}</button>`).join("")}</div>
+      <div class="card list">${rows || `<p class="muted small" style="margin:0">No more shuttles from ${esc(from)} today.</p>`}</div></div>`;
   }
 
   /* =================================================================== HELP */
@@ -643,7 +697,7 @@
     $$(".tabbar a").forEach(a => a.classList.toggle("active", a.dataset.tab === v));
     if (v === "home") renderHome();
     if (v === "food") renderFood();
-    if (v === "transport") { if (["bus", "offsite", "autos", "fares"].includes(arg)) tTab = arg; renderTransport(); }
+    if (v === "transport") { if (arg === "shuttle") tTab = "offsite"; else if (["bus", "offsite", "autos", "fares"].includes(arg)) tTab = arg; renderTransport(); }
     if (v === "help") { renderHelp(); if (arg) setTimeout(() => document.getElementById(arg)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
     if (v === "map") { initMap(); setTimeout(() => { map?.invalidateSize(); if (arg) focusPlace(arg); }, 60); }
     if (!(v === "help" && arg)) window.scrollTo(0, 0);

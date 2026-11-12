@@ -17,7 +17,7 @@ window.SITE = {
     tagline: "Contingent Hub",
     host: "IIM Kozhikode",
     siteUrl: "",                        // EDIT: your Vercel URL once live (used by the Share button)
-    sportagonUrl: "",                   // EDIT: Sportagon link
+    sportagonUrl: "https://events.sportagon.in/c/NTlhMWIwNTAtZDI1Ni00OTllLTkxNzQtZDUxYzZhMTdjMzAxLlZNZkxLOXNvN29SRzROaEo0TVdWZzBUSQ",  // official fixtures & live scores
     sportagonName: "Sportagon",
 
     /* GOOGLE MY MAPS: the Map tab draws this map's layers, pins, paths and
@@ -42,7 +42,7 @@ window.SITE = {
 
   /* ---------------- ANNOUNCEMENTS ---------------- level: "info" | "alert" */
   announcements: [
-    { level: "alert", text: "Cricket (NIT Calicut ground) and badminton (Devagiri Sports Complex) are OFF CAMPUS. Travel → Off-campus shows how to get there and how early to leave." },
+    { level: "alert", text: "Cricket (NIT Calicut ground) and badminton (St. Joseph's College Devagiri) are OFF CAMPUS. Free shuttles link them with IIMK and the boys' accommodation; see Travel → Shuttle." },
     { level: "info", text: "All contingents eat at BL Mess, Phase V, 3rd floor. Carry your mess coupon." },
     { level: "info",  text: "Free campus buses loop between PGP Auditorium, D Landing, Phase V and the Main Gate from early morning to past midnight. Use the Travel tab to find your next bus." },
   ],
@@ -84,8 +84,8 @@ window.SITE = {
     { id: "football", cat: "sports", mapName: "Football Ground", name: "Football Ground (Phase V)", lat: 11.2918394, lng: 75.8759925, desc: "Football." },
     { id: "tennis",   cat: "sports", mapName: "Tennis Court", name: "Tennis Court (Phase V)", lat: 11.292406, lng: 75.8758018, desc: "Tennis." },
     { id: "swimming", cat: "sports", mapName: "Swimming pool", name: "Swimming Pool (Phase V)", lat: 11.2922917, lng: 75.876406, desc: "Swimming." },
-    { id: "devagiri", cat: "sports", mapName: "Badminton, Devagiri Sports Complex", name: "Devagiri Sports Complex", lat: 11.2639971, lng: 75.8353342,
-      gmaps: "Devagiri College Kozhikode", desc: "Badminton. OFF CAMPUS, about 6–7 km away in Kozhikode." },
+    { id: "devagiri", cat: "sports", mapName: "Badminton, Devagiri Sports Complex", name: "Devagiri Sports Complex (St. Joseph's College)", lat: 11.2639971, lng: 75.8353342,
+      gmaps: "St. Joseph's College Devagiri Kozhikode", desc: "Badminton. OFF CAMPUS, about 6–7 km away in Kozhikode." },
     { id: "bball",    cat: "sports", mapName: "Basketball Court", name: "Basketball Court (Main Gate)", lat: 11.300364, lng: 75.873027, desc: "Basketball. Next to the main ground; take LEFT at the Main Gate." },
     { id: "volley",   cat: "sports", mapName: "Volleyball Court", name: "Volleyball Court (Main Gate)", lat: 11.300569, lng: 75.873075, desc: "Volleyball. Next to the main ground; take LEFT at the Main Gate." },
     { id: "mg-ground",cat: "sports", mapName: "Kho Kho and Throwball", name: "Main Gate Ground (Kho-Kho & Throwball)", lat: 11.3008104, lng: 75.8735103, desc: "Kho-kho and throwball." },
@@ -417,13 +417,110 @@ mess: {
      For each off-campus place: travel time from campus, how early to report (reportMin),
      and optional official transport `trips` ({ d: "D1", t: "07:00", from: "D Landing", note: "Team bus" }). */
   offsite: [
-    { id: "nit", place: "nit", title: "Cricket · NIT Calicut Ground", km: "~8 km", travelMin: 25, reportMin: 30,
-      how: "Go together as a team. Autos and taxis from D Landing or the Main Gate: ₹250 one way / ₹500 return (Team Namo card).", trips: [] },
-    { id: "devagiri", place: "devagiri", title: "Badminton · Devagiri Sports Complex", km: "~10 km", travelMin: 35, reportMin: 30,
-      how: "In Kozhikode city, near the Medical College (₹270 on the Team Namo card). Allow extra time in evening traffic.", trips: [] },
-    { id: "men-acc", place: "men-acc", title: "Men's Accommodation ⇄ Campus", km: "~6 km", travelMin: 20,
-      how: "Men's contingents stay at Govt. Arts & Science College, Kunnamangalam. EDIT: add the shuttle timings in `trips` below.", trips: [] }
+    { id: "nit", place: "nit", title: "Cricket · NIT Calicut Ground", km: "~8 km", travelMin: 25, reportMin: 30, shuttleStop: "Cricket (NIT)",
+      how: "Take the outside-campus shuttle. Autos and taxis from D Landing or the Main Gate cost ₹250 one way / ₹500 return (Team Namo card)." },
+    { id: "devagiri", place: "devagiri", title: "Badminton · St. Joseph's College Devagiri", km: "~10 km", travelMin: 25, reportMin: 30, shuttleStop: "Badminton (Devagiri)",
+      how: "Take the outside-campus shuttle. By auto it's near the Medical College (₹270 on the Team Namo card). Allow extra time in evening traffic." },
+    { id: "men-acc", place: "men-acc", title: "Boys' Accommodation · Govt. Arts & Science College (UG college)", km: "~6 km", travelMin: 45, shuttleStop: "Boys' Accommodation",
+      how: "Shuttles run to IIM Kozhikode all day and late into the night. Short loops go straight to IIMK; full loops also stop at the cricket ground and the badminton court." }
   ],
+
+  /* ---------------- OUTSIDE-CAMPUS SHUTTLE (from "Inter-IIM 2026 | Shuttle timings") ----------------
+     Each trip: d = day, t = times at the 7 stops in `route` order (null = doesn't stop).
+     Full loop: Accommodation → Cricket → IIMK → Badminton → IIMK → Cricket → Accommodation.
+     Short loop: Accommodation → IIMK → Accommodation. last: true = last trip of the day to cricket & badminton. */
+  shuttle: {
+    route: ["Boys' Accommodation", "Cricket (NIT)", "IIM Kozhikode", "Badminton (Devagiri)", "IIM Kozhikode", "Cricket (NIT)", "Boys' Accommodation"],
+    stopPlace: { "Boys' Accommodation": "men-acc", "Cricket (NIT)": "nit", "IIM Kozhikode": "", "Badminton (Devagiri)": "devagiri" },  // EDIT: IIMK pickup point id, e.g. "main-gate"
+    note: "Timings are approximate. The last time at Boys' Accommodation is when the bus arrives back there.",
+    lastNote: "Last trip of the day to the Cricket Ground and Badminton Court. If you're still at either venue, take this bus.",
+    trips: [
+      {"d": "D1", "t": ["06:00", "06:25", "06:50", "07:15", "07:40", "08:05", "08:30"]},
+      {"d": "D1", "t": ["06:30", null, "07:15", null, null, null, "08:00"]},
+      {"d": "D1", "t": ["07:00", "07:25", "07:50", "08:15", "08:40", "09:05", "09:30"]},
+      {"d": "D1", "t": ["08:00", "08:25", "08:50", "09:15", "09:40", "10:05", "10:30"]},
+      {"d": "D1", "t": ["08:30", null, "09:15", null, null, null, "10:00"]},
+      {"d": "D1", "t": ["09:00", "09:25", "09:50", "10:15", "10:40", "11:05", "11:30"]},
+      {"d": "D1", "t": ["10:00", "10:25", "10:50", "11:15", "11:40", "12:05", "12:30"]},
+      {"d": "D1", "t": ["10:30", null, "11:15", null, null, null, "12:00"]},
+      {"d": "D1", "t": ["11:00", "11:25", "11:50", "12:15", "12:40", "13:05", "13:30"]},
+      {"d": "D1", "t": ["12:00", "12:25", "12:50", "13:15", "13:40", "14:05", "14:30"]},
+      {"d": "D1", "t": ["12:30", null, "13:15", null, null, null, "14:00"]},
+      {"d": "D1", "t": ["13:00", "13:25", "13:50", "14:15", "14:40", "15:05", "15:30"]},
+      {"d": "D1", "t": ["14:00", "14:25", "14:50", "15:15", "15:40", "16:05", "16:30"]},
+      {"d": "D1", "t": ["14:30", null, "15:15", null, null, null, "16:00"]},
+      {"d": "D1", "t": ["15:00", "15:25", "15:50", "16:15", "16:40", "17:05", "17:30"]},
+      {"d": "D1", "last": true, "t": ["16:00", "16:25", "16:50", "17:15", "17:40", "18:05", "18:30"]},
+      {"d": "D1", "t": ["16:30", null, "17:15", null, null, null, "18:00"]},
+      {"d": "D1", "t": ["17:00", null, "17:45", null, null, null, "18:30"]},
+      {"d": "D1", "t": ["18:00", null, "18:45", null, null, null, "19:30"]},
+      {"d": "D1", "t": ["18:30", null, "19:15", null, null, null, "20:00"]},
+      {"d": "D1", "t": ["19:00", null, "19:45", null, null, null, "20:30"]},
+      {"d": "D1", "t": ["19:30", null, "20:15", null, null, null, "21:00"]},
+      {"d": "D1", "t": ["20:00", null, "20:45", null, null, null, "21:30"]},
+      {"d": "D1", "t": ["20:30", null, "21:15", null, null, null, "22:00"]},
+      {"d": "D1", "t": ["21:00", null, "21:45", null, null, null, "22:30"]},
+      {"d": "D1", "t": ["21:30", null, "22:15", null, null, null, "23:00"]},
+      {"d": "D1", "t": ["22:00", null, "22:45", null, null, null, "23:30"]},
+      {"d": "D1", "t": ["22:30", null, "23:15", null, null, null, "00:00"]},
+      {"d": "D1", "t": ["23:00", null, "23:45", null, null, null, "00:30"]},
+      {"d": "D2", "t": ["04:00", "04:25", "04:50", "05:15", "05:40", "06:05", "06:30"]},
+      {"d": "D2", "t": ["05:00", "05:25", "05:50", "06:15", "06:40", "07:05", "07:30"]},
+      {"d": "D2", "t": ["05:30", null, "06:15", null, null, null, "07:00"]},
+      {"d": "D2", "t": ["06:00", "06:25", "06:50", "07:15", "07:40", "08:05", "08:30"]},
+      {"d": "D2", "t": ["07:00", "07:25", "07:50", "08:15", "08:40", "09:05", "09:30"]},
+      {"d": "D2", "t": ["07:30", null, "08:15", null, null, null, "09:00"]},
+      {"d": "D2", "t": ["08:00", "08:25", "08:50", "09:15", "09:40", "10:05", "10:30"]},
+      {"d": "D2", "t": ["09:00", "09:25", "09:50", "10:15", "10:40", "11:05", "11:30"]},
+      {"d": "D2", "t": ["09:30", null, "10:15", null, null, null, "11:00"]},
+      {"d": "D2", "t": ["10:00", "10:25", "10:50", "11:15", "11:40", "12:05", "12:30"]},
+      {"d": "D2", "t": ["11:00", "11:25", "11:50", "12:15", "12:40", "13:05", "13:30"]},
+      {"d": "D2", "t": ["11:30", null, "12:15", null, null, null, "13:00"]},
+      {"d": "D2", "t": ["12:00", "12:25", "12:50", "13:15", "13:40", "14:05", "14:30"]},
+      {"d": "D2", "t": ["13:00", "13:25", "13:50", "14:15", "14:40", "15:05", "15:30"]},
+      {"d": "D2", "t": ["13:30", null, "14:15", null, null, null, "15:00"]},
+      {"d": "D2", "t": ["14:00", "14:25", "14:50", "15:15", "15:40", "16:05", "16:30"]},
+      {"d": "D2", "t": ["15:00", "15:25", "15:50", "16:15", "16:40", "17:05", "17:30"]},
+      {"d": "D2", "t": ["15:30", null, "16:15", null, null, null, "17:00"]},
+      {"d": "D2", "t": ["16:00", "16:25", "16:50", "17:15", "17:40", "18:05", "18:30"]},
+      {"d": "D2", "t": ["17:00", "17:25", "17:50", "18:15", "18:40", "19:05", "19:30"]},
+      {"d": "D2", "t": ["17:30", null, "18:15", null, null, null, "19:00"]},
+      {"d": "D2", "t": ["18:00", "18:25", "18:50", "19:15", "19:40", "20:05", "20:30"]},
+      {"d": "D2", "last": true, "t": ["19:00", "19:25", "19:50", "20:15", "20:40", "21:05", "21:30"]},
+      {"d": "D2", "t": ["19:30", null, "20:15", null, null, null, "21:00"]},
+      {"d": "D2", "t": ["20:00", null, "20:45", null, null, null, "21:30"]},
+      {"d": "D2", "t": ["21:00", null, "21:45", null, null, null, "22:30"]},
+      {"d": "D2", "t": ["21:30", null, "22:15", null, null, null, "23:00"]},
+      {"d": "D2", "t": ["22:00", null, "22:45", null, null, null, "23:30"]},
+      {"d": "D2", "t": ["22:30", null, "23:15", null, null, null, "00:00"]},
+      {"d": "D2", "t": ["23:00", null, "23:45", null, null, null, "00:30"]},
+      {"d": "D2", "t": ["23:30", null, "00:15", null, null, null, "01:00"]},
+      {"d": "D2", "t": ["00:00", null, "00:45", null, null, null, "01:30"]},
+      {"d": "D3", "t": ["04:00", "04:25", "04:50", "05:15", "05:40", "06:05", "06:30"]},
+      {"d": "D3", "t": ["05:00", "05:25", "05:50", "06:15", "06:40", "07:05", "07:30"]},
+      {"d": "D3", "t": ["05:30", null, "06:15", null, null, null, "07:00"]},
+      {"d": "D3", "t": ["06:00", "06:25", "06:50", "07:15", "07:40", "08:05", "08:30"]},
+      {"d": "D3", "t": ["07:00", "07:25", "07:50", "08:15", "08:40", "09:05", "09:30"]},
+      {"d": "D3", "t": ["07:30", null, "08:15", null, null, null, "09:00"]},
+      {"d": "D3", "t": ["08:00", "08:25", "08:50", "09:15", "09:40", "10:05", "10:30"]},
+      {"d": "D3", "t": ["09:00", "09:25", "09:50", "10:15", "10:40", "11:05", "11:30"]},
+      {"d": "D3", "t": ["09:30", null, "10:15", null, null, null, "11:00"]},
+      {"d": "D3", "t": ["10:00", "10:25", "10:50", "11:15", "11:40", "12:05", "12:30"]},
+      {"d": "D3", "t": ["11:00", "11:25", "11:50", "12:15", "12:40", "13:05", "13:30"]},
+      {"d": "D3", "t": ["11:30", null, "12:15", null, null, null, "13:00"]},
+      {"d": "D3", "t": ["12:00", "12:25", "12:50", "13:15", "13:40", "14:05", "14:30"]},
+      {"d": "D3", "t": ["13:00", "13:25", "13:50", "14:15", "14:40", "15:05", "15:30"]},
+      {"d": "D3", "t": ["13:30", null, "14:15", null, null, null, "15:00"]},
+      {"d": "D3", "t": ["14:00", "14:25", "14:50", "15:15", "15:40", "16:05", "16:30"]},
+      {"d": "D3", "t": ["15:00", "15:25", "15:50", "16:15", "16:40", "17:05", "17:30"]},
+      {"d": "D3", "t": ["15:30", null, "16:15", null, null, null, "17:00"]},
+      {"d": "D3", "t": ["16:00", "16:25", "16:50", "17:15", "17:40", "18:05", "18:30"]},
+      {"d": "D3", "last": true, "t": ["17:00", "17:25", "17:50", "18:15", "18:40", "19:05", "19:30"]},
+      {"d": "D3", "t": ["17:30", null, "18:15", null, null, null, "19:00"]},
+      {"d": "D3", "t": ["18:00", null, "18:45", null, null, null, "19:30"]},
+      {"d": "D3", "t": ["19:00", null, "19:45", null, null, null, "20:30"]}
+    ]
+  },
 
   /* ---------------- EMERGENCY ---------------- */
   emergency: [
