@@ -33,6 +33,7 @@ window.SITE = {
        column A = sports, cells like "B VS K", "SEMIS 1", "B VS T & K VS N").
        The sheet must stay "Anyone with the link → Viewer". If it can't be read,
        the site uses the last copy it saved, then fixtures.js. Set id "" to turn off. */
+    livePollSeconds: 30,               // how often phones check for committee updates (status, delays, results)
     scheduleSheet: {
       id: "1M5e54Ff0bAhkAeLbHIN5E2FSLR3fO5UtF8BzWR8HvCI",
       tabs: { D1: "Day 1 - 13th", D2: "Day 2 - 14th", D3: "Day 3 - 15th" }

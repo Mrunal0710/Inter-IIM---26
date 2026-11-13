@@ -454,3 +454,23 @@ tr.soon{background:#fff0f0}
 .tabbar span{font-size:10.5px}
 @media(max-width:380px){.tabbar i{font-size:18px}.tabbar span{font-size:9.5px}}
 @media(max-width:380px){.brand-text b{font-size:14px}.phase{padding:4px 7px;font-size:10px}.cont-btn{padding:5px 8px}.topbar{gap:7px;padding:0 10px}}
+
+/* ---------- v12: live committee updates ---------- */
+.tag.delay-tag{background:#fff1d6;color:#8a5300}
+.tag.done-tag{background:#2b8a3e;color:#fff}
+.fx-res{margin:6px 0 2px;font-size:.88rem;line-height:1.5;display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center}
+.fx-res .tm{font-size:.85rem}.fx-res .tm img{width:18px;height:18px}
+.fx-res .sep{color:#c9c4b6}
+.fx-note{font-size:.82rem;color:#8a5300;margin-top:2px}
+.fx-card.fs-live{outline:2px solid #e5484d}
+.fx-card.fs-delayed{outline:2px solid #f59f00}
+.fx-card.fs-done{background:#f6fbf7}
+.fx-card.fs-cancelled{opacity:.6}
+.res-t{margin-right:6px;font-weight:900}
+.st-card{margin-top:12px}
+.st-card h3{font-size:1.05rem;font-weight:900;margin:0 0 8px}
+.st-pub th,.st-pub td{text-align:center;padding:7px 4px}
+.st-pub th:nth-child(2),.st-pub td:nth-child(2){text-align:left}
+.st-pub tr.me{background:#fff3c4}
+.hero-cta2{background:#fff;color:#111;margin-left:6px}
+@media(max-width:420px){.hero-cta2{margin-left:0;margin-top:8px}}

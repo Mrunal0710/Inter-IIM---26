@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Committee · Inter IIM '26</title>
+  <meta name="theme-color" content="#0e0e0e" />
+  <link rel="icon" href="assets/icon-192.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="adm">
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Public site"><img id="brandImg" class="brand-mark" src="assets/emblem.png" alt="" width="34" height="38" />
+      <span class="brand-text"><b>Committee</b><small>Inter IIM '26</small></span></a>
+    <span id="who" class="phase" hidden></span>
+    <button id="logout" class="cont-btn" type="button" hidden>Log out</button>
+  </header>
+  <main id="adm"></main>
+  <nav class="tabbar" id="admNav" hidden aria-label="Committee">
+    <a href="#matches" data-tab="matches"><i>🏁</i><span>Matches</span></a>
+    <a href="#standings" data-tab="standings"><i>📊</i><span>Standings</span></a>
+    <a href="#teams" data-tab="teams"><i>👥</i><span>Teams</span></a>
+    <a href="#more" data-tab="more"><i>⚙️</i><span>Publish & log</span></a>
+  </nav>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="assets.js"></script>
+  <script src="data.js"></script>
+  <script src="fixtures.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

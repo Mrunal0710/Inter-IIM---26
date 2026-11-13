@@ -152,7 +152,7 @@
       countdown = `<div class="countdown"><div><b>${d}</b><span>days</span></div><div><b>${h}</b><span>hrs</span></div><div><b>${m}</b><span>min</span></div></div>`;
     }
     const range = `${fmtDate(S.days[0].date)} – ${fmtDate(S.days[S.days.length - 1].date)}`;
-    const notes = (S.announcements || []).map(a => `<div class="notice ${a.level === "alert" ? "alert" : ""}"><i>${a.level === "alert" ? "⚠️" : "📣"}</i><div>${esc(a.text)}</div></div>`).join("");
+    const notes = (Array.isArray(LIVE.announcements) ? LIVE.announcements : (S.announcements || [])).map(a => `<div class="notice ${a.level === "alert" ? "alert" : ""}"><i>${a.level === "alert" ? "⚠️" : "📣"}</i><div>${esc(a.text)}</div></div>`).join("");
 
     // 1. Sports venues
     const venues = venueGroups().map(g => { const off = isOff(g.place);
@@ -182,7 +182,8 @@
     $("#view-home").innerHTML = `
       <div class="hero"><img class="hero-emblem" src="${EMBLEM}" alt=""><div class="kicker">Hosted by ${esc(C.host)}</div><h1>${esc(C.eventName)}</h1>
         <p><b>${range}</b><br>Venues, mess, buses and autos, all in one place.</p>${countdown}
-        ${C.sportagonUrl ? `<a class="hero-cta" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener">🏆 Fixtures & live scores on ${esc(C.sportagonName)} ↗</a>` : ""}</div>
+        ${C.sportagonUrl ? `<a class="hero-cta" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener">🏆 Fixtures & live scores on ${esc(C.sportagonName)} ↗</a>` : ""}
+        <a class="hero-cta hero-cta2" href="#transport/shuttle">🚐 Shuttle outside campus · timings</a></div>
       ${notes ? `<div class="section notes">${notes}</div>` : ""}
 
       <div class="section"><div class="section-head"><h2>🏟️ Sports venues</h2><a href="#map/only-sports">All on map →</a></div>
@@ -204,11 +205,11 @@
       <div class="section quick">
         ${C.sportagonUrl ? `<a class="qa primary" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener"><i>🏆</i>Sportagon</a>` : `<span class="qa primary" aria-disabled="true"><i>🏆</i>Sportagon</span>`}
         <a class="qa dark" href="#map"><i>🗺️</i>Map</a>
+        <a class="qa" href="#transport/shuttle"><i>🚐</i>Shuttle</a>
         <a class="qa" href="#transport/bus"><i>🚌</i>Campus bus</a>
         <a class="qa" href="#transport/autos"><i>🛺</i>Autos</a>
         <a class="qa" href="#fixtures"><i>📅</i>Fixtures</a>
         <a class="qa" href="#food"><i>🍛</i>Menu</a>
-        <a class="qa" href="#transport/shuttle"><i>🚐</i>Shuttle</a>
         <a class="qa sos" href="#help"><i>🚨</i>SOS</a>
       </div>
       ${busHTML}
@@ -273,44 +274,92 @@
     const p = placeById(S.venues[baseSport(s)]), note = S.venueNotes[s];
     return p ? `📍 <a href="#map/${esc(p.id)}">${esc(note || p.name)}</a>` : "";
   }
-  const fxState = (f, live, n) => { if (!live) return ""; const st = ev(f.t);
-    return n >= st && n < st + 60 ? `<span class="tag live-tag">● Now</span>` : n >= st + 60 ? `<span class="tag">Done</span>` : `<span class="tag">${fmtIn(st - n)}</span>`; };
+  /* ---------- committee updates (from /api/live) ---------- */
+  let LIVE = { matches: {}, standings: {}, settings: { results: true, mvp: true, standings: true } };
+  try { const c = JSON.parse(store.get("live") || "null"); if (c && c.matches) LIVE = c; } catch { /* ignore */ }
+  async function loadLive() {
+    try { const r = await fetch("/api/live", { cache: "no-store" }); if (!r.ok) return false;
+      const j = await r.json(); const sig = x => JSON.stringify([x.matches, x.standings, x.announcements, x.settings]), changed = sig(j) !== sig(LIVE);
+      LIVE = j; store.set("live", JSON.stringify(j)); return changed; } catch { return false; }
+  }
+  const hmOf = m => { m = ((m % 1440) + 1440) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+  const fid = f => `${f.d}|${f.t}|${f.s}`;
+  const recOf = f => LIVE.matches[fid(f)] || null;
+  const startOf = f => { const r = recOf(f); return ev(f.t) + (r?.status === "delayed" ? (r.delay || 0) : 0); };
+  const isOver = f => ["done", "cancelled"].includes(recOf(f)?.status);
+  const fxState = (f, live, n) => {
+    const r = recOf(f);
+    if (r?.status === "live") return `<span class="tag live-tag">● LIVE</span>`;
+    if (r?.status === "delayed") return `<span class="tag delay-tag">Delayed +${r.delay} min · now ${fmt12(hmOf(startOf(f)))}</span>`;
+    if (r?.status === "done") return `<span class="tag done-tag">Final</span>`;
+    if (r?.status === "cancelled") return `<span class="tag">Cancelled</span>`;
+    if (!live) return ""; const st = startOf(f);
+    return n >= st + 60 ? "" : n >= st ? `<span class="tag">Starting</span>` : `<span class="tag">${fmtIn(st - n)}</span>`;
+  };
+  function resultHTML(f) {
+    const r = recOf(f); if (!r) return "";
+    const win = r.winner && (S.teams.find(t => t.short === r.winner) ? badge(S.teams.find(t => t.short === r.winner), 18) : esc(r.winner));
+    const bits = [r.score && `🏁 ${esc(r.score)}`, r.winner && `🏆 ${r.winner === "Draw" ? "Draw" : win}`, r.mvp && `⭐ MVP: <b>${esc(r.mvp)}</b>${r.mvpTeam ? ` (${esc(r.mvpTeam)})` : ""}`].filter(Boolean);
+    return (bits.length ? `<div class="fx-res">${bits.join(" <span class='sep'>·</span> ")}</div>` : "") + (r.note ? `<div class="fx-note">ℹ️ ${esc(r.note)}</div>` : "");
+  }
 
-  let xDay = null, xSport = "all", xTeam = null;
+  let xDay = null, xSport = "all", xTeam = null, xView = "schedule";
   function renderFixtures(arg) {
-    if (arg) { const s = [...new Set(FX.map(f => f.s))].find(x => nameKey(baseSport(x)) === nameKey(decodeURIComponent(arg))); if (s) xSport = baseSport(s); }
+    if (arg === "results" || arg === "standings") xView = arg;
+    else if (arg) { const s0 = [...new Set(FX.map(f => f.s))].find(x => nameKey(baseSport(x)) === nameKey(decodeURIComponent(arg))); if (s0) { xSport = baseSport(s0); xView = "schedule"; } }
     if (!xDay) xDay = (firstUpcomingDay() || S.days[0]).key;
     if (xTeam === null) xTeam = myTeam()?.id || "all";
     const live = isToday(xDay), n = now().min, t = xTeam !== "all" ? teamById(xTeam) : null;
     const sports = [...new Set(FX.map(f => baseSport(f.s)))].sort();
-    const list = fxSorted(FX.filter(f => f.d === xDay && (xSport === "all" || baseSport(f.s) === xSport) && involves(f, t)));
-    const groups = {}; list.forEach(f => (groups[f.t] ||= []).push(f));
-    const src = fxSource.kind === "live" ? `🟢 Live from the sports committee schedule · updated ${esc(fxSource.at)}`
-      : fxSource.kind === "saved" ? `Saved copy of the schedule (${esc(fxSource.at)}). It refreshes when you're back online.` : `Built-in copy of the schedule (13 Nov).`;
+    const seg = `<div class="seg" style="margin:14px 0 10px">${[["schedule", "📅 Schedule"], ["results", "🏁 Results"], ["standings", "📊 Standings"]].map(([k, l]) => `<button class="${xView === k ? "on" : ""}" data-xv="${k}">${l}</button>`).join("")}</div>`;
+    const filters = `<div class="filters"><select id="xSport" aria-label="Sport"><option value="all">All sports</option>${sports.map(s1 => `<option ${s1 === xSport ? "selected" : ""}>${esc(s1)}</option>`).join("")}</select>
+        <select id="xTeam" aria-label="IIM"><option value="all">All IIMs</option>${S.teams.map(x => `<option value="${x.id}" ${x.id === xTeam ? "selected" : ""}>${esc(x.short)}</option>`).join("")}</select></div>`;
+    const card = f => `<div class="card fx-card ${recOf(f)?.status ? "fs-" + recOf(f).status : ""}"><div class="fx-s">${sportEmoji(f.s)} ${esc(f.s)} ${fxState(f, isToday(f.d), n)}</div>${matchHTML(f.m)}${resultHTML(f)}
+          <div class="small muted">${fxVenue(f.s)}</div></div>`;
+    let body = "";
+    if (xView === "schedule") {
+      const list = FX.filter(f => f.d === xDay && (xSport === "all" || baseSport(f.s) === xSport) && involves(f, t)).sort((a, b) => startOf(a) - startOf(b) || a.s.localeCompare(b.s));
+      const groups = {}; list.forEach(f => (groups[hmOf(startOf(f))] ||= []).push(f));
+      const src = fxSource.kind === "live" ? `🟢 Live from the sports committee schedule · updated ${esc(fxSource.at)}`
+        : fxSource.kind === "saved" ? `Saved copy of the schedule (${esc(fxSource.at)}). It refreshes when you're back online.` : `Built-in copy of the schedule (13 Nov).`;
+      body = `<div class="chips scroll-x" style="margin-bottom:10px">${S.days.map(d => `<button class="chip ${xDay === d.key ? "on" : ""}" data-xd="${d.key}">${esc(d.label)} · ${fmtDate(d.date)}${isToday(d.key) ? " · today" : ""}</button>`).join("")}</div>
+        ${filters}<p class="small muted src">${src} · ${list.length} fixture${list.length === 1 ? "" : "s"}</p>
+        ${t ? `<p class="small muted" style="margin-top:-6px">Showing ${esc(t.short)}'s matches. Semis and finals appear once the sheet names the teams.</p>` : ""}
+        <div class="timeline">${Object.keys(groups).map(tm => `<div class="slot ${live && groups[tm].every(f => isOver(f) || n >= startOf(f) + 60) ? "past" : ""}"><div class="slot-t">${fmt12(tm)}</div>
+          <div class="slot-b">${groups[tm].map(card).join("")}</div></div>`).join("") || `<div class="empty-note">No fixtures match these filters on this day.</div>`}</div>`;
+    } else if (xView === "results") {
+      const done = FX.filter(f => recOf(f) && (recOf(f).score || recOf(f).winner || recOf(f).mvp) && (xSport === "all" || baseSport(f.s) === xSport) && involves(f, t))
+        .sort((a, b) => b.d.localeCompare(a.d) || startOf(b) - startOf(a));
+      body = filters + (LIVE.settings?.results === false && !done.length ? `<div class="empty-note">Results are published on ${esc(C.sportagonName)}. ${sportagonLink("btn sm accent", "Open ↗")}</div>`
+        : done.length ? S.days.slice().reverse().map(d => { const l = done.filter(f => f.d === d.key); return l.length ? `<div class="section-head" style="margin-top:14px"><h2>${esc(d.label)} · ${fmtDate(d.date)}</h2></div><div class="list">${l.map(f => card(f).replace('<div class="fx-s">', `<div class="fx-s"><b class="res-t">${fmt12(f.t)}</b>`)).join("")}</div>` : ""; }).join("")
+        : `<div class="empty-note">No results posted yet. Live scores are on ${esc(C.sportagonName)}.</div>`);
+    } else {
+      const keys = Object.keys(LIVE.standings || {}).sort((a, b) => a === "Overall" ? -1 : b === "Overall" ? 1 : a.localeCompare(b));
+      const shown = keys.filter(k => xSport === "all" || k === "Overall" || baseSport(k) === xSport);
+      body = filters + (shown.length ? shown.map(k => { const rows = LIVE.standings[k].rows || [];
+        return `<div class="card st-card"><h3>${k === "Overall" ? "🏆 Overall championship" : `${sportEmoji(k)} ${esc(k)}`}</h3><table class="st-pub"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr></thead><tbody>
+          ${rows.map((r, i) => { const tm = S.teams.find(x => x.short === r.team); return `<tr class="${t && tm && tm.id === t.id ? "me" : ""}"><td>${i + 1}</td><td>${tm ? badge(tm, 20) : esc(r.team)}${r.note ? `<div class="small muted">${esc(r.note)}</div>` : ""}</td><td>${r.p ?? "–"}</td><td>${r.w ?? "–"}</td><td>${r.d ?? "–"}</td><td>${r.l ?? "–"}</td><td><b>${r.pts ?? "–"}</b></td></tr>`; }).join("")}
+          </tbody></table></div>`; }).join("")
+        : `<div class="empty-note">${LIVE.settings?.standings === false ? `Standings are published on ${esc(C.sportagonName)}.` : "No standings published yet."}</div>`);
+    }
     $("#view-fixtures").innerHTML = `
-      <div class="banner"><div><h3>🏆 Fixtures</h3><p>Times can change. Live scores & results are on ${esc(C.sportagonName)}.</p></div>${sportagonLink("btn accent", `Live scores ↗`)}</div>
-      <div class="chips scroll-x" style="margin:14px 0 10px">${S.days.map(d => `<button class="chip ${xDay === d.key ? "on" : ""}" data-xd="${d.key}">${esc(d.label)} · ${fmtDate(d.date)}${isToday(d.key) ? " · today" : ""}</button>`).join("")}</div>
-      <div class="filters"><select id="xSport" aria-label="Sport"><option value="all">All sports</option>${sports.map(s => `<option ${s === xSport ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>
-        <select id="xTeam" aria-label="IIM"><option value="all">All IIMs</option>${S.teams.map(x => `<option value="${x.id}" ${x.id === xTeam ? "selected" : ""}>${esc(x.short)}</option>`).join("")}</select></div>
-      <p class="small muted src">${src} · ${list.length} fixture${list.length === 1 ? "" : "s"}</p>
-      ${t ? `<p class="small muted" style="margin-top:-6px">Showing ${esc(t.short)}'s matches. Semis and finals appear once the sheet names the teams.</p>` : ""}
-      <div class="timeline">${Object.keys(groups).map(tm => `<div class="slot ${live && n >= ev(tm) + 60 ? "past" : ""}"><div class="slot-t">${fmt12(tm)}</div>
-        <div class="slot-b">${groups[tm].map(f => `<div class="card fx-card"><div class="fx-s">${sportEmoji(f.s)} ${esc(f.s)} ${fxState(f, live, n)}</div>${matchHTML(f.m)}
-          <div class="small muted">${fxVenue(f.s)}</div></div>`).join("")}</div></div>`).join("")
-        || `<div class="empty-note">No fixtures match these filters on this day.</div>`}</div>`;
-    $("#xSport").onchange = e => { xSport = e.target.value; renderFixtures(); };
-    $("#xTeam").onchange = e => { xTeam = e.target.value; renderFixtures(); };
+      <div class="banner"><div><h3>🏆 Fixtures</h3><p>Updated live by the Sports Committee. Live scores are also on ${esc(C.sportagonName)}.</p></div>${sportagonLink("btn accent", `${esc(C.sportagonName)} ↗`)}</div>
+      ${seg}${body}`;
+    $("#xSport") && ($("#xSport").onchange = e => { xSport = e.target.value; renderFixtures(); });
+    $("#xTeam") && ($("#xTeam").onchange = e => { xTeam = e.target.value; renderFixtures(); });
     $$("#view-fixtures [data-xd]").forEach(b => b.onclick = () => { xDay = b.dataset.xd; renderFixtures(); });
+    $$("#view-fixtures [data-xv]").forEach(b => b.onclick = () => { xView = b.dataset.xv; history.replaceState(null, "", xView === "schedule" ? "#fixtures" : `#fixtures/${xView}`); renderFixtures(); });
   }
   function homeFixturesHTML() {
     const day = firstUpcomingDay(); if (!day || !FX.length) return "";
     const live = isToday(day.key), n = now().min, t = myTeam();
-    let list = fxSorted(FX.filter(f => f.d === day.key && (!live || ev(f.t) >= n - 45)));
+    let list = FX.filter(f => f.d === day.key && !isOver(f) && (!live || recOf(f)?.status === "live" || startOf(f) >= n - 45))
+      .sort((a, b) => (recOf(b)?.status === "live") - (recOf(a)?.status === "live") || startOf(a) - startOf(b));
     const mine = t ? list.filter(f => involves(f, t)) : [];
     list = (mine.length ? mine : list).slice(0, 5);
     return `<div class="section"><div class="section-head"><h2>⏱ ${live ? "Up next" : `${esc(day.label)} fixtures`}${mine.length ? ` · ${esc(t.short)}` : ""}</h2><a href="#fixtures">All fixtures →</a></div>
-      <div class="card list fx-list">${list.length ? list.map(f => `<div class="fx"><div class="fx-t">${fmt12(f.t)}</div><div class="fx-b">
-        <div class="fx-s">${sportEmoji(f.s)} ${esc(f.s)} ${fxState(f, live, n)}</div>${matchHTML(f.m)}<div class="small muted">${fxVenue(f.s)}</div></div></div>`).join("")
+      <div class="card list fx-list">${list.length ? list.map(f => `<div class="fx"><div class="fx-t">${fmt12(hmOf(startOf(f)))}</div><div class="fx-b">
+        <div class="fx-s">${sportEmoji(f.s)} ${esc(f.s)} ${fxState(f, live, n)}</div>${matchHTML(f.m)}${resultHTML(f)}<div class="small muted">${fxVenue(f.s)}</div></div></div>`).join("")
         : `<p class="muted small" style="margin:0">No more fixtures today.</p>`}</div></div>`;
   }
   function timeLabel(s) {
@@ -599,11 +648,11 @@
   }
 
   /* =================================================================== TRANSPORT */
-  let tTab = "bus", aFilter = "all", aQuery = "", fQuery = "";
+  let tTab = "offsite", aFilter = "all", aQuery = "", fQuery = "";
   let bFrom = store.get("busFrom") || "Main Gate", bTo = store.get("busTo") || "PGP Auditorium", bDay = null, bAll = false;
   function renderTransport() {
     const v = $("#view-transport");
-    v.innerHTML = `<div class="seg seg4">${[["bus", "🚌", "Campus bus"], ["offsite", "🚐", "Shuttle"], ["autos", "🛺", "Autos"], ["fares", "₹", "Fares"]]
+    v.innerHTML = `<div class="seg seg4">${[["offsite", "🚐", "Shuttle"], ["bus", "🚌", "Campus bus"], ["autos", "🛺", "Autos"], ["fares", "₹", "Fares"]]
       .map(([k, e, l]) => `<button class="${tTab === k ? "on" : ""}" data-t="${k}"><span>${e}</span>${l}</button>`).join("")}</div><div id="tBody"></div>`;
     $$("#view-transport .seg button").forEach(b => b.onclick = () => { tTab = b.dataset.t; history.replaceState(null, "", `#transport/${tTab}`); renderTransport(); });
     ({ bus: renderBus, offsite: renderOffsite, autos: renderAutos, fares: renderFares })[tTab]();
@@ -785,7 +834,7 @@
     if (v === "home") renderHome();
     if (v === "food") renderFood();
     if (v === "fixtures") renderFixtures(arg);
-    if (v === "transport") { if (arg === "shuttle") tTab = "offsite"; else if (["bus", "offsite", "autos", "fares"].includes(arg)) tTab = arg; renderTransport(); }
+    if (v === "transport") { tTab = arg === "shuttle" || !arg ? "offsite" : ["bus", "offsite", "autos", "fares"].includes(arg) ? arg : "offsite"; renderTransport(); }
     if (v === "help") { renderHelp(); if (arg) setTimeout(() => document.getElementById(arg)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
     if (v === "map") { initMap(); setTimeout(() => { map?.invalidateSize(); if (arg) focusPlace(arg); }, 60); }
     if (!(v === "help" && arg)) window.scrollTo(0, 0);
@@ -844,6 +893,9 @@
     await loadSheets();
     rerender();
     setInterval(() => { renderPhase(); rerender(); }, 60000);
+    const poll = async () => { if (document.hidden) return; if (await loadLive()) { const v = current().v; if (v === "home" || v === "fixtures") rerender(); } };
+    poll(); setInterval(poll, (C.livePollSeconds || 30) * 1000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   }
   boot();
