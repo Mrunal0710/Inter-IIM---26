@@ -447,3 +447,10 @@ tr.soon{background:#fff0f0}
 .off-meta{margin:3px 0 0;font-size:.85rem;color:var(--muted)}
 .route-line span{white-space:nowrap}
 @media(max-width:420px){.bf-row{grid-template-columns:1fr;gap:6px}.bf-row .swap{justify-self:center;width:44px;height:34px;transform:none}}
+
+/* ---------- v11: fixtures ---------- */
+.fx-card .vs + .vs, .fx .vs + .vs{margin-top:2px}
+.fx-card{padding:11px 13px}
+.tabbar span{font-size:10.5px}
+@media(max-width:380px){.tabbar i{font-size:18px}.tabbar span{font-size:9.5px}}
+@media(max-width:380px){.brand-text b{font-size:14px}.phase{padding:4px 7px;font-size:10px}.cont-btn{padding:5px 8px}.topbar{gap:7px;padding:0 10px}}

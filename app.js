@@ -88,7 +88,7 @@
       `<button type="button" data-id="${esc(t.id)}" class="${t.id === cur ? "on" : ""}"><img src="${esc(t.logo)}" alt="" width="40" height="40"><span><b>${esc(t.short)}</b><small>${t.visiting ? esc(t.name) : "Host"}</small></span></button>`
     ).join("");
     $$("#contList button").forEach(b => b.onclick = () => {
-      store.set("team", b.dataset.id); d.close(); renderTeamBtn(); rerender(); toast("Saved on this phone");
+      store.set("team", b.dataset.id); xTeam = null; d.close(); renderTeamBtn(); rerender(); toast("Saved on this phone");
     });
     d.showModal ? d.showModal() : d.setAttribute("open", "");
   }
@@ -199,13 +199,14 @@
         <a class="card mess-card" href="#food"><div class="mc-top"><div><b>${esc(S.mess.name)}</b><span>${esc(S.mess.where)} · for all contingents</span></div>${chev}</div>
         <div class="mc-status">${messLine}</div><div class="small muted">🎟️ ${esc(S.mess.note)}</div></a></div>
 
+      ${homeFixturesHTML()}
       ${homeShuttleHTML()}
       <div class="section quick">
         ${C.sportagonUrl ? `<a class="qa primary" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener"><i>🏆</i>Sportagon</a>` : `<span class="qa primary" aria-disabled="true"><i>🏆</i>Sportagon</span>`}
         <a class="qa dark" href="#map"><i>🗺️</i>Map</a>
         <a class="qa" href="#transport/bus"><i>🚌</i>Campus bus</a>
         <a class="qa" href="#transport/autos"><i>🛺</i>Autos</a>
-        <a class="qa" href="#transport/fares"><i>₹</i>Fares</a>
+        <a class="qa" href="#fixtures"><i>📅</i>Fixtures</a>
         <a class="qa" href="#food"><i>🍛</i>Menu</a>
         <a class="qa" href="#transport/shuttle"><i>🚐</i>Shuttle</a>
         <a class="qa sos" href="#help"><i>🚨</i>SOS</a>
@@ -252,6 +253,92 @@
         ${fs.map(f => { const pl = placeById(f.where); return `<tr><td><b>${esc(f.meal)}</b>${f.open ? ` <span class="tag ok">Open</span>` : ""}${pl ? `<div class="small"><a href="#map/${esc(pl.id)}">On map</a></div>` : ""}</td><td class="r">${fmt12(f.start)} – ${fmt12(f.end)}</td></tr>`; }).join("")}
       </tbody></table></div></div>`;
     $$("#view-food [data-fd]").forEach(b => b.onclick = () => { fDay = b.dataset.fd; renderFood(); });
+  }
+
+  /* =================================================================== FIXTURES
+     From the schedule Google Sheet (live via /api/schedule), fallback: saved copy, then fixtures.js. */
+  let FX = (window.FIXTURES || []).slice(), fxSource = { kind: "built-in", at: "" };
+  const pairsOf = m => String(m).split(/\s*&\s*/).map(x => x.trim()).filter(Boolean);
+  const teamsIn = m => pairsOf(m).flatMap(p => p.toUpperCase().split(/\s+VS\s+/).map(x => x.trim()).filter(x => x.length === 1));
+  const isKnockout = m => !teamsIn(m).length;
+  function matchHTML(m) {
+    return pairsOf(m).map(p => { const parts = p.split(/\s+VS\s+/i).map(x => x.trim().toUpperCase());
+      return parts.length === 2 && parts.every(x => teamByLetter(x))
+        ? `<span class="vs">${badge(teamByLetter(parts[0]))}<i>vs</i>${badge(teamByLetter(parts[1]))}</span>`
+        : `<span class="stage">${esc(p)}</span>`; }).join("");
+  }
+  const fxSorted = list => list.slice().sort((a, b) => ev(a.t) - ev(b.t) || a.s.localeCompare(b.s));
+  const involves = (f, team) => !team || teamsIn(f.m).includes(team.letter);
+  function fxVenue(s) {
+    const p = placeById(S.venues[baseSport(s)]), note = S.venueNotes[s];
+    return p ? `📍 <a href="#map/${esc(p.id)}">${esc(note || p.name)}</a>` : "";
+  }
+  const fxState = (f, live, n) => { if (!live) return ""; const st = ev(f.t);
+    return n >= st && n < st + 60 ? `<span class="tag live-tag">● Now</span>` : n >= st + 60 ? `<span class="tag">Done</span>` : `<span class="tag">${fmtIn(st - n)}</span>`; };
+
+  let xDay = null, xSport = "all", xTeam = null;
+  function renderFixtures(arg) {
+    if (arg) { const s = [...new Set(FX.map(f => f.s))].find(x => nameKey(baseSport(x)) === nameKey(decodeURIComponent(arg))); if (s) xSport = baseSport(s); }
+    if (!xDay) xDay = (firstUpcomingDay() || S.days[0]).key;
+    if (xTeam === null) xTeam = myTeam()?.id || "all";
+    const live = isToday(xDay), n = now().min, t = xTeam !== "all" ? teamById(xTeam) : null;
+    const sports = [...new Set(FX.map(f => baseSport(f.s)))].sort();
+    const list = fxSorted(FX.filter(f => f.d === xDay && (xSport === "all" || baseSport(f.s) === xSport) && involves(f, t)));
+    const groups = {}; list.forEach(f => (groups[f.t] ||= []).push(f));
+    const src = fxSource.kind === "live" ? `🟢 Live from the sports committee schedule · updated ${esc(fxSource.at)}`
+      : fxSource.kind === "saved" ? `Saved copy of the schedule (${esc(fxSource.at)}). It refreshes when you're back online.` : `Built-in copy of the schedule (13 Nov).`;
+    $("#view-fixtures").innerHTML = `
+      <div class="banner"><div><h3>🏆 Fixtures</h3><p>Times can change. Live scores & results are on ${esc(C.sportagonName)}.</p></div>${sportagonLink("btn accent", `Live scores ↗`)}</div>
+      <div class="chips scroll-x" style="margin:14px 0 10px">${S.days.map(d => `<button class="chip ${xDay === d.key ? "on" : ""}" data-xd="${d.key}">${esc(d.label)} · ${fmtDate(d.date)}${isToday(d.key) ? " · today" : ""}</button>`).join("")}</div>
+      <div class="filters"><select id="xSport" aria-label="Sport"><option value="all">All sports</option>${sports.map(s => `<option ${s === xSport ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>
+        <select id="xTeam" aria-label="IIM"><option value="all">All IIMs</option>${S.teams.map(x => `<option value="${x.id}" ${x.id === xTeam ? "selected" : ""}>${esc(x.short)}</option>`).join("")}</select></div>
+      <p class="small muted src">${src} · ${list.length} fixture${list.length === 1 ? "" : "s"}</p>
+      ${t ? `<p class="small muted" style="margin-top:-6px">Showing ${esc(t.short)}'s matches. Semis and finals appear once the sheet names the teams.</p>` : ""}
+      <div class="timeline">${Object.keys(groups).map(tm => `<div class="slot ${live && n >= ev(tm) + 60 ? "past" : ""}"><div class="slot-t">${fmt12(tm)}</div>
+        <div class="slot-b">${groups[tm].map(f => `<div class="card fx-card"><div class="fx-s">${sportEmoji(f.s)} ${esc(f.s)} ${fxState(f, live, n)}</div>${matchHTML(f.m)}
+          <div class="small muted">${fxVenue(f.s)}</div></div>`).join("")}</div></div>`).join("")
+        || `<div class="empty-note">No fixtures match these filters on this day.</div>`}</div>`;
+    $("#xSport").onchange = e => { xSport = e.target.value; renderFixtures(); };
+    $("#xTeam").onchange = e => { xTeam = e.target.value; renderFixtures(); };
+    $$("#view-fixtures [data-xd]").forEach(b => b.onclick = () => { xDay = b.dataset.xd; renderFixtures(); });
+  }
+  function homeFixturesHTML() {
+    const day = firstUpcomingDay(); if (!day || !FX.length) return "";
+    const live = isToday(day.key), n = now().min, t = myTeam();
+    let list = fxSorted(FX.filter(f => f.d === day.key && (!live || ev(f.t) >= n - 45)));
+    const mine = t ? list.filter(f => involves(f, t)) : [];
+    list = (mine.length ? mine : list).slice(0, 5);
+    return `<div class="section"><div class="section-head"><h2>⏱ ${live ? "Up next" : `${esc(day.label)} fixtures`}${mine.length ? ` · ${esc(t.short)}` : ""}</h2><a href="#fixtures">All fixtures →</a></div>
+      <div class="card list fx-list">${list.length ? list.map(f => `<div class="fx"><div class="fx-t">${fmt12(f.t)}</div><div class="fx-b">
+        <div class="fx-s">${sportEmoji(f.s)} ${esc(f.s)} ${fxState(f, live, n)}</div>${matchHTML(f.m)}<div class="small muted">${fxVenue(f.s)}</div></div></div>`).join("")
+        : `<p class="muted small" style="margin:0">No more fixtures today.</p>`}</div></div>`;
+  }
+  function timeLabel(s) {
+    const m = String(s).match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i); if (!m) return null;
+    let h = +m[1]; const ap = (m[3] || "").toUpperCase();
+    if (ap === "PM" && h !== 12) h += 12; if (ap === "AM" && h === 12) h = 0;
+    return `${pad(h)}:${m[2]}`;
+  }
+  async function loadScheduleSheet() {
+    const sh = C.scheduleSheet; if (!sh || !sh.id) return;
+    const cached = store.get("fxLive2");
+    if (cached) { try { const c = JSON.parse(cached); if (c.fx?.length > 30) { FX = c.fx; fxSource = { kind: "saved", at: c.at }; } } catch { /* ignore */ } }
+    try {
+      const out = [];
+      await Promise.all(Object.entries(sh.tabs).map(async ([key, tab]) => {
+        let r = await fetch(`/api/schedule?id=${encodeURIComponent(sh.id)}&sheet=${encodeURIComponent(tab)}`).catch(() => null);
+        if (!r || !r.ok) r = await fetch(`https://docs.google.com/spreadsheets/d/${sh.id}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tab)}`, { cache: "no-store" });
+        if (!r.ok) throw new Error("sheet");
+        const rows = parseCSV(await r.text()); if (!rows.length) throw new Error("empty");
+        const hdr = rows[0].map(timeLabel);
+        if (hdr.filter(Boolean).length < 20) throw new Error("layout");
+        rows.slice(1).forEach(row => { const sport = (row[0] || "").trim(); if (!sport) return;
+          row.forEach((c, i) => { if (i && hdr[i] && String(c).trim()) out.push({ d: key, t: hdr[i], s: sport, m: String(c).trim().replace(/\s+/g, " ") }); }); });
+      }));
+      if (out.length < 30) throw new Error("too few");
+      FX = out; const at = new Date().toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+      fxSource = { kind: "live", at }; store.set("fxLive2", JSON.stringify({ fx: out, at: `${fmtDate(now().iso)} ${at}` }));
+    } catch (e) { console.info("Live schedule unavailable; using", fxSource.kind, e.message); }
   }
 
   /* =================================================================== MAP
@@ -351,7 +438,7 @@
       ${(() => { const p = placeForFeat(f); return p?.desc && !f.desc.includes(p.desc.slice(0, 20)) ? `<p class="pop-info">${linkify(p.desc)}</p>` : ""; })()}
       ${f.desc ? `<p>${linkify(f.desc)}</p>` : ""}
       <div class="row"><a class="btn sm" href="${featDirections(f)}" target="_blank" rel="noopener">Directions ↗</a>
-      ${sp.length && C.sportagonUrl ? `<a class="btn sm accent" href="${esc(C.sportagonUrl)}" target="_blank" rel="noopener">${esc(C.sportagonName)} ↗</a>` : ""}</div></div>`;
+      ${sp.length ? `<a class="btn sm accent" href="#fixtures/${encodeURIComponent(sp[0])}">Fixtures</a>` : ""}</div></div>`;
   }
 
   function fromDataPlaces() {   // last-resort fallback if no Google map data at all
@@ -689,7 +776,7 @@
   }
 
   /* =================================================================== ROUTER */
-  const views = ["home", "map", "food", "transport", "help"];
+  const views = ["home", "map", "fixtures", "food", "transport", "help"];
   function current() { const [v0, arg] = (location.hash.slice(1) || "home").split("/"); return { v: views.includes(v0) ? v0 : "home", arg }; }
   function route() {
     const { v, arg } = current();
@@ -697,6 +784,7 @@
     $$(".tabbar a").forEach(a => a.classList.toggle("active", a.dataset.tab === v));
     if (v === "home") renderHome();
     if (v === "food") renderFood();
+    if (v === "fixtures") renderFixtures(arg);
     if (v === "transport") { if (arg === "shuttle") tTab = "offsite"; else if (["bus", "offsite", "autos", "fares"].includes(arg)) tTab = arg; renderTransport(); }
     if (v === "help") { renderHelp(); if (arg) setTimeout(() => document.getElementById(arg)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
     if (v === "map") { initMap(); setTimeout(() => { map?.invalidateSize(); if (arg) focusPlace(arg); }, 60); }
@@ -704,7 +792,7 @@
   }
   function rerender() {
     const { v } = current();
-    if (v === "home") renderHome(); else if (v === "food") renderFood();
+    if (v === "home") renderHome(); else if (v === "food") renderFood(); else if (v === "fixtures") renderFixtures();
     else if (v === "transport" && tTab === "bus") renderBus(); else if (v === "transport" && tTab === "offsite") renderOffsite();
   }
 
@@ -729,7 +817,7 @@
     return `${pad(h)}:${m[2]}`;
   }
   async function loadSheets() {
-    const L_ = C.liveSheets || {}, jobs = [];
+    const L_ = C.liveSheets || {}, jobs = [loadScheduleSheet()];
     const get = async url => asObjects(parseCSV(await (await fetch(url, { cache: "no-store" })).text()));
     const dayKey = v => { const d = S.days.find(x => x.key === v || x.date === v || x.label.toLowerCase() === String(v).toLowerCase()); return d ? d.key : v; };
     const stopName = v => S.busStops.find(s => s.toLowerCase().replace(/\s/g, "") === String(v).toLowerCase().replace(/\s/g, "")) || v.trim();
@@ -748,7 +836,7 @@
     $("#evName").textContent = C.eventName; $("#evTag").textContent = C.tagline;
     document.title = `${C.eventName} · ${C.tagline}`;
     $("#contBtn").onclick = openTeamDialog;
-    $("#contBtn").hidden = !S.teams.some(t => t.hostel);
+    $("#contBtn").hidden = !(C.scheduleSheet && C.scheduleSheet.id) && !S.teams.some(t => t.hostel);
     $("#mapSearch").addEventListener("input", () => filterPlaces());
     renderTeamBtn(); renderPhase();
     window.addEventListener("hashchange", route);

@@ -5,8 +5,8 @@
    Times are 24h "HH:MM" in IST. Anything from 00:00 to 03:59 counts as
    late night of the SAME event day (e.g. a 00:10 bus on Day 1 runs after
    the 23:10 one).
-   Fixtures and results are NOT on this site. They live on Sportagon
-   (config.sportagonUrl).
+   Fixtures come live from the schedule Google Sheet (config.scheduleSheet),
+   with fixtures.js as the built-in fallback. Live scores/results: Sportagon.
    ===================================================================== */
 
 window.SITE = {
@@ -28,6 +28,15 @@ window.SITE = {
 
     mapCenter: [11.2943, 75.8736],      // IIM Kozhikode campus centre (verified)
     mapZoom: 17,
+
+    /* FIXTURES, read live from the sports committee's schedule sheet (row 1 = times,
+       column A = sports, cells like "B VS K", "SEMIS 1", "B VS T & K VS N").
+       The sheet must stay "Anyone with the link → Viewer". If it can't be read,
+       the site uses the last copy it saved, then fixtures.js. Set id "" to turn off. */
+    scheduleSheet: {
+      id: "1M5e54Ff0bAhkAeLbHIN5E2FSLR3fO5UtF8BzWR8HvCI",
+      tabs: { D1: "Day 1 - 13th", D2: "Day 2 - 14th", D3: "Day 3 - 15th" }
+    },
 
     /* OPTIONAL: other live lists from published Google Sheet CSVs (README §4). */
     liveSheets: { announcements: "", autos: "", buses: "" }
@@ -531,7 +540,7 @@ mess: {
 
   /* ---------------- FAQ ---------------- */
   faqs: [
-    { q: "Where can I find fixtures and results?", a: "Fixtures, live scores and results are all on Sportagon, the official fixtures platform. Use the Sportagon button on the home screen." },
+    { q: "Where can I find fixtures and results?", a: "The Fixtures tab has the full schedule, updated live from the sports committee's sheet. Pick your IIM at the top to see your matches first. Live scores and results are on Sportagon." },
     { q: "How do I get around campus?", a: "Free buses link PGP Auditorium, D Landing, Phase V and the Main Gate all day. Open Travel → Campus bus, choose where you are and where you're going, and it shows the next buses." },
     { q: "Where are the washrooms?", a: "Each common room has assigned washroom buildings. See Help → Washrooms, or the signboard in your common room. At H Mess, use A, B or C Block, or the mess level and first floor." },
     { q: "How do I find the venues?", a: "Follow the placards. Kho-kho and throwball are at the Main Ground by the Main Gate. For volleyball and basketball, take LEFT at the Main Gate. Phase 5 has the sports complex plus the E1–E4 classrooms (table tennis, carrom, chess)." },
